@@ -1633,6 +1633,153 @@ function embedUrl(v) {
   return `https://www.youtube-nocookie.com/embed/${v.id}?rel=0&modestbranding=1${v.start ? `&start=${v.start}` : ""}${v.end ? `&end=${v.end}` : ""}`;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+//  ATHLETE — strength, power, conditioning, core, mobility & a weekly plan
+//  Authored from standard S&C principles for grapplers. General guidance —
+//  not medical/coaching advice for an individual; scale to your level.
+//////////////////////////////////////////////////////////////////////////////
+
+const WORKOUTS = [
+  {
+    id: "strength", name: "Full-Body Strength", emoji: "🏋️",
+    goal: "Build the raw strength behind your grips, frames, posture, and takedowns.",
+    freq: "2×/week, on non-consecutive days",
+    safety: "Warm up, leave 1–2 reps in the tank, and add load slowly. Lift heavy on lighter-rolling days.",
+    blocks: [
+      { name: "Prep (≈8 min)", items: [
+        { name: "Bike/row easy + leg swings", scheme: "5 min", desc: "Raise core temperature and loosen the hips before loading." },
+        { name: "Goblet squat + band pull-apart", scheme: "2×10", desc: "Grease the squat and shoulders before the main lifts." },
+      ] },
+      { name: "Main Lifts", items: [
+        { name: "Trap-bar / Conventional Deadlift", scheme: "4×5", desc: "Flat back, brace hard, drive the floor away.", why: "The hip hinge powers takedowns, bridges, and standing up from bottom." },
+        { name: "Front / Goblet Squat", scheme: "4×6", desc: "Upright torso, elbows high, knees track over toes.", why: "Leg drive for passing pressure and stand-ups." },
+        { name: "Weighted Pull-up / Heavy Row", scheme: "4×6", desc: "Full hang to chin-over-bar, or row to the sternum.", why: "Pulling strength = grip fighting, collar drags, guard retention." },
+        { name: "Overhead or Bench Press", scheme: "4×6", desc: "Brace, press in a straight line, control the lowering.", why: "Framing and creating space off the bottom." },
+      ] },
+      { name: "Accessory", items: [
+        { name: "Single-leg RDL", scheme: "3×8/side", desc: "Hinge on one leg; hips square, slow and controlled.", why: "Single-leg stability for scrambles and balance." },
+        { name: "Farmer Carry", scheme: "3×40 m", desc: "Heavy, tall posture, braced core.", why: "Grip and trunk endurance — the great equalizer late in rounds." },
+        { name: "Hanging Knee Raise", scheme: "3×12", desc: "Control the swing; curl the pelvis.", why: "Compression strength for guard and getting the hips up." },
+      ] },
+    ],
+  },
+  {
+    id: "power", name: "Power & Explosiveness", emoji: "⚡",
+    goal: "Speed for takedowns, scrambles, bridges, and stand-ups.",
+    freq: "1–2×/week, done FRESH (before fatigue)",
+    safety: "Do power work fresh, not after hard rolls. Full recovery between sets — this is speed, not burn.",
+    blocks: [
+      { name: "Prep", items: [
+        { name: "Pogo hops + A-skips", scheme: "3×20s", desc: "Prime the tendons and nervous system." },
+        { name: "Bodyweight squat jumps", scheme: "2×5", desc: "Easy ramp-up jumps." },
+      ] },
+      { name: "Power (low reps, full rest)", items: [
+        { name: "Box Jump", scheme: "5×3", desc: "Explode up, land soft, step down. Quality over height.", why: "Hip explosion for stand-ups and level changes." },
+        { name: "Med-ball Slam", scheme: "4×5", desc: "Full overhead to the floor, whole body.", why: "Power transfer for throws and passing drives." },
+        { name: "Kettlebell Swing", scheme: "4×10", desc: "Hip-snap (not a squat); glutes finish the swing.", why: "Ballistic hip extension — bridges, sweeps, takedowns." },
+        { name: "Broad Jump", scheme: "4×3", desc: "Horizontal explosion; stick the landing.", why: "Penetration-step power for shots." },
+      ] },
+    ],
+  },
+  {
+    id: "conditioning", name: "Conditioning & Gas Tank", emoji: "🫁",
+    goal: "An aerobic base that recovers fast, plus the anaerobic punch for scrambles.",
+    freq: "2–3×/week (mostly easy, one hard)",
+    safety: "Your easy work should feel genuinely easy. Pair the hard interval day with lighter mat days.",
+    blocks: [
+      { name: "Aerobic Base (easy)", items: [
+        { name: "Zone-2 cardio", scheme: "30–45 min", desc: "Row/bike/run at a pace you can nasal-breathe through (conversational).", why: "Builds the engine that recovers between exchanges and rounds." },
+      ] },
+      { name: "Anaerobic Intervals (hard)", items: [
+        { name: "Grappling EMOM", scheme: "10–15 min", desc: "Each minute: 10 KB swings + 5 burpees + 5 sprawls; rest the remainder.", why: "Trains the scramble energy system and fast recovery." },
+        { name: "Bike/Row sprints", scheme: "8×20s / 40s easy", desc: "All-out 20s, easy spin 40s.", why: "Repeat-sprint ability for explosive exchanges." },
+      ] },
+      { name: "Grip Endurance", items: [
+        { name: "Gi / towel dead hang", scheme: "4× max", desc: "Hang from a bar or draped gi/towel as long as possible.", why: "Grip fails first — train it to fail last." },
+      ] },
+    ],
+  },
+  {
+    id: "core", name: "Core, Bracing & Neck", emoji: "🧱",
+    goal: "Anti-rotation and bracing for guard retention, posture, and a resilient neck.",
+    freq: "2–3×/week (short, can be daily)",
+    safety: "Train the neck gently and progressively — never explosive, never to failure. Stop at any pinching.",
+    blocks: [
+      { name: "Core", items: [
+        { name: "Hollow Hold", scheme: "3×20–30s", desc: "Low back flat, ribs down, limbs extended.", why: "The shape of a strong guard and a connected frame." },
+        { name: "Pallof Press", scheme: "3×10/side", desc: "Resist the band's pull; brace and press straight out.", why: "Anti-rotation = holding posture and resisting sweeps." },
+        { name: "Ab Wheel / Plank", scheme: "3×8 / 3×45s", desc: "Anti-extension; keep the pelvis tucked.", why: "Protects the spine under passing pressure." },
+      ] },
+      { name: "Neck (gentle)", items: [
+        { name: "Neck isometrics", scheme: "3×20s/way", desc: "Press your head into your hand (front/back/sides) with light, steady force — no reps to failure.", why: "A strong neck resists cranks and the wear of bridging." },
+      ] },
+    ],
+  },
+];
+
+const MOBILITY = [
+  {
+    id: "warmup", name: "Pre-Training Warm-Up", emoji: "🔥", when: "Before every session (~8–10 min)", kind: "dynamic",
+    items: [
+      { name: "Light cardio", dur: "2–3 min", desc: "Jog, skip, or bike to raise your temperature." },
+      { name: "Leg swings (front + side)", dur: "10/side", desc: "Open the hips dynamically." },
+      { name: "Hip CARs", dur: "5/side", desc: "Slow, controlled hip circles through full range." },
+      { name: "Shrimps & bridges", dur: "2 lengths", desc: "Grease the core BJJ movements." },
+      { name: "Technical stand-ups", dur: "5/side", desc: "Connect getting up off the floor." },
+      { name: "Neck & wrist circles", dur: "10 each", desc: "Prep the joints that take load in grappling." },
+    ],
+  },
+  {
+    id: "recovery", name: "Post-Training Recovery Stretch", emoji: "🧊", when: "After training / evenings (~10 min)", kind: "static — hold 30–45s",
+    items: [
+      { name: "Pigeon pose", dur: "45s/side", desc: "Deep glute and hip opener for guard players.", target: "Hips" },
+      { name: "Couch stretch", dur: "45s/side", desc: "Hip flexors and quads — counters all the sitting and guard work.", target: "Hip flexors" },
+      { name: "Seated forward fold", dur: "45s", desc: "Hamstrings and low back.", target: "Posterior chain" },
+      { name: "Butterfly / frog", dur: "45s", desc: "Groin and inner thigh for open guards.", target: "Adductors" },
+      { name: "Thoracic opener / child's pose", dur: "45s", desc: "Open the upper back and lats.", target: "T-spine" },
+      { name: "Forearm & wrist stretch", dur: "30s/side", desc: "Decompress the grippers.", target: "Forearms" },
+    ],
+  },
+  {
+    id: "hips", name: "Hip Mobility (Guard Players)", emoji: "🦵", when: "Daily or 3×/week", kind: "targeted",
+    items: [
+      { name: "90/90 transitions", dur: "8/side", desc: "Internal and external hip rotation under control.", target: "Hip rotation" },
+      { name: "Frog rocks", dur: "10", desc: "Rock back into the hips, knees wide.", target: "Adductors" },
+      { name: "Cossack squats", dur: "8/side", desc: "Lateral hip and adductor range.", target: "Lateral hip" },
+      { name: "Deep squat hold", dur: "60s", desc: "Sit in the bottom; pry the knees out with the elbows.", target: "Ankles + hips" },
+    ],
+  },
+  {
+    id: "shoulders", name: "Shoulders & T-Spine", emoji: "🦾", when: "3×/week", kind: "targeted",
+    items: [
+      { name: "Band shoulder dislocates", dur: "2×10", desc: "Wide grip, slow over-and-back.", target: "Shoulder range" },
+      { name: "Wall slides", dur: "2×10", desc: "Back flat to wall, slide the arms overhead.", target: "Scapular control" },
+      { name: "Thoracic rotations (open book)", dur: "8/side", desc: "Rotate the upper back, follow the hand with your eyes.", target: "T-spine" },
+      { name: "Gentle sleeper stretch", dur: "30s/side", desc: "Light internal-rotation stretch — ease in, never force.", target: "Rotator cuff" },
+    ],
+  },
+  {
+    id: "legs", name: "Knees & Ankles (Leg-Lockers)", emoji: "🦿", when: "3×/week", kind: "targeted",
+    items: [
+      { name: "Ankle CARs", dur: "8/side", desc: "Controlled ankle circles through full range.", target: "Ankles" },
+      { name: "ATG split squat", dur: "8/side", desc: "Knee travels past the toe slowly; build tolerance.", target: "Knees" },
+      { name: "Tib raises", dur: "2×15", desc: "Toes up against a wall — balances the calves.", target: "Shins/knees" },
+      { name: "Calf / Achilles stretch", dur: "45s/side", desc: "Straight and bent knee versions.", target: "Calves" },
+    ],
+  },
+];
+
+const WEEKLY = [
+  { d: "Mon", tag: "Skill", items: ["BJJ class (technique + rolls)", "Recovery stretch (10 min)"] },
+  { d: "Tue", tag: "S&C", items: ["Full-Body Strength", "Zone-2 cardio (30 min)"] },
+  { d: "Wed", tag: "Skill", items: ["BJJ — positional sparring focus", "Hip mobility"] },
+  { d: "Thu", tag: "S&C", items: ["Power & Explosiveness", "Short anaerobic intervals"] },
+  { d: "Fri", tag: "Skill", items: ["BJJ class", "Recovery stretch"] },
+  { d: "Sat", tag: "Skill", items: ["Open mat / competition rounds", "Light mobility"] },
+  { d: "Sun", tag: "Recover", items: ["Rest or long easy walk / zone-2", "Full static stretch"] },
+];
+const WEEKLY_NOTE = "Training 2–3×/week instead? Keep all the BJJ days, fold strength into one full-body session, and prioritize the warm-up + recovery stretch every mat day.";
+
 // Assemble a full training session from a set of focus positions.
 function buildSession(focusIds, minutes, seed) {
   const positions = focusIds.map(id => POSITIONS[id]).filter(Boolean);
@@ -3046,6 +3193,103 @@ function PositionVisual({ pos, video, searchUrl, savedUrl, onSave, onClear }) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//  ATHLETE LAB — strength, conditioning, mobility & weekly plan
+//////////////////////////////////////////////////////////////////////////////
+
+function ConditioningModal({ onClose }) {
+  const [tab, setTab] = React.useState("workouts");
+  const tabBtn = (id, label) => (
+    <button onClick={() => setTab(id)}
+      className={`text-sm px-3.5 py-1.5 rounded-lg transition ${tab === id ? "bg-sky-500/25 text-sky-100 ring-1 ring-sky-400/40" : "bg-ink-700 text-slate-400 hover:bg-ink-600"}`}>{label}</button>
+  );
+  const ExRow = ({ e }) => (
+    <div className="rounded-xl bg-ink-800/60 ring-1 ring-white/5 p-3">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold text-slate-100">{e.name}</span>
+        <span className="ml-auto text-[11px] font-mono text-sky-300 bg-sky-400/10 px-2 py-0.5 rounded">{e.scheme || e.dur}</span>
+      </div>
+      <div className="text-xs text-slate-400 mt-1 leading-relaxed">{e.desc}</div>
+      {e.why && <div className="text-[11px] text-emerald-300/80 mt-1">↳ {e.why}</div>}
+      {e.target && <span className="inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-ink-700 text-slate-400 border border-white/5">{e.target}</span>}
+    </div>
+  );
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink-950/85 backdrop-blur-sm">
+      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3 flex-wrap">
+        <span className="text-lg">💪</span>
+        <h2 className="font-display font-semibold text-white">Athlete — S&amp;C &amp; Mobility</h2>
+        <div className="flex items-center gap-1 ml-2">
+          {tabBtn("workouts", "Workouts")}
+          {tabBtn("mobility", "Mobility & Stretch")}
+          {tabBtn("weekly", "Weekly Plan")}
+        </div>
+        <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+          {tab === "workouts" && WORKOUTS.map(w => (
+            <div key={w.id} className="rounded-2xl glass ring-1 ring-white/5 p-5">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="text-xl">{w.emoji}</span>
+                <h3 className="font-display text-xl font-bold text-white">{w.name}</h3>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-sky-400/15 text-sky-200 border border-sky-400/20">{w.freq}</span>
+              </div>
+              <p className="text-sm text-slate-400 mb-3">{w.goal}</p>
+              {w.blocks.map((b, i) => (
+                <div key={i} className="mb-3">
+                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">{b.name}</h4>
+                  <div className="grid sm:grid-cols-2 gap-2">{b.items.map((e, j) => <ExRow key={j} e={e} />)}</div>
+                </div>
+              ))}
+              {w.safety && <div className="text-xs rounded-lg bg-amber-400/10 border border-amber-400/30 text-amber-200 px-3 py-2 mt-1">🛡️ {w.safety}</div>}
+            </div>
+          ))}
+
+          {tab === "mobility" && MOBILITY.map(r => (
+            <div key={r.id} className="rounded-2xl glass ring-1 ring-white/5 p-5">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="text-xl">{r.emoji}</span>
+                <h3 className="font-display text-xl font-bold text-white">{r.name}</h3>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-400/15 text-cyan-200 border border-cyan-400/20">{r.kind}</span>
+              </div>
+              <p className="text-sm text-slate-400 mb-3">{r.when}</p>
+              <div className="grid sm:grid-cols-2 gap-2">{r.items.map((e, j) => <ExRow key={j} e={e} />)}</div>
+            </div>
+          ))}
+
+          {tab === "weekly" && (
+            <>
+              <p className="text-sm text-slate-400">A sample week that blends mat time with strength, conditioning, and recovery. Adjust to your schedule.</p>
+              <div className="space-y-2">
+                {WEEKLY.map(day => {
+                  const tagColor = day.tag === "S&C" ? "#0ea5e9" : day.tag === "Recover" ? "#22d3ee" : "#6366f1";
+                  return (
+                    <div key={day.d} className="rounded-2xl glass ring-1 ring-white/5 p-4 flex items-center gap-4">
+                      <div className="w-12 text-center">
+                        <div className="font-display font-bold text-white">{day.d}</div>
+                        <div className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded mt-1" style={{ background: tagColor + "22", color: tagColor }}>{day.tag}</div>
+                      </div>
+                      <div className="flex-1 flex flex-wrap gap-2">
+                        {day.items.map((it, i) => (
+                          <span key={i} className="text-sm text-slate-200 bg-ink-800/60 rounded-lg px-3 py-1.5">{it}</span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="text-xs rounded-lg bg-indigo-500/10 border border-indigo-400/30 text-indigo-200 px-3 py-2.5">💡 {WEEKLY_NOTE}</div>
+              <div className="text-xs rounded-lg bg-amber-400/10 border border-amber-400/30 text-amber-200 px-3 py-2.5">🛡️ General guidance, not individualized medical or coaching advice. Warm up, progress gradually, prioritize sleep, and deload when run-down.</div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //  MAIN APP
 //////////////////////////////////////////////////////////////////////////////
 
@@ -3066,6 +3310,8 @@ function App() {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [dashOpen, setDashOpen] = React.useState(false);
   const [trainOpen, setTrainOpen] = React.useState(false);
+  const [athleteOpen, setAthleteOpen] = React.useState(false);
+  const scrollRef = React.useRef(null);
   const [ruleset, setRuleset] = useLocalStorage("bjjflow:ruleset", "Open Mat (all legal)");
   const [learned, setLearned] = useLocalStorage("bjjflow:learned", []);
   const [settings, setSettings] = useLocalStorage("bjjflow:settings", { colorblind: false, reduceMotion: false, showPoints: true });
@@ -3207,10 +3453,10 @@ function App() {
     const onKey = (e) => {
       const tag = (e.target.tagName || "").toLowerCase();
       const typing = tag === "input" || tag === "textarea" || e.target.isContentEditable;
-      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen;
+      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen;
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setCmdkOpen(v => !v); return; }
       if (typing) return;
-      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); return; }
+      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); return; }
       if (anyModal) return;
       if (/^[1-9]$/.test(e.key)) { const t = pos.transitions[+e.key - 1]; if (t) goTo(t.to); return; }
       switch (e.key.toLowerCase()) {
@@ -3220,6 +3466,7 @@ function App() {
         case "p": setPlansOpen(true); break;
         case "d": setDrillOpen(true); break;
         case "t": setTrainOpen(true); break;
+        case "w": setAthleteOpen(true); break;
         case "s": setDashOpen(true); break;
         case "?": setDashOpen(true); break;
         case "f": toggleFav(currentId); break;
@@ -3228,7 +3475,13 @@ function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, trainOpen, history]); // eslint-disable-line
+  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, trainOpen, athleteOpen, history]); // eslint-disable-line
+
+  // Flow polish: when the position changes, scroll the content back to the top
+  // so each new position opens at its hero, not wherever you last scrolled.
+  React.useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTo({ top: 0, behavior: settings.reduceMotion ? "auto" : "smooth" });
+  }, [currentId]); // eslint-disable-line
 
   return (
     <div className={`h-full flex text-slate-200 ${settings.reduceMotion ? "reduce-motion" : ""}`}>
@@ -3264,7 +3517,7 @@ function App() {
               <div className="text-[10px] text-slate-500 uppercase tracking-widest">Position Flow Tree</div>
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap justify-end items-center gap-2">
             <button onClick={() => setCmdkOpen(true)} title="Search (⌘/Ctrl K)"
               className="text-sm px-2.5 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-300 border border-white/5 transition flex items-center gap-1.5">
               🔎 <span className="hidden md:inline text-[11px] text-slate-500">⌘K</span>
@@ -3276,6 +3529,10 @@ function App() {
             <button onClick={() => setTrainOpen(true)} title="Training Lab — drills & how to improve"
               className="text-sm px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-400/30 transition">
               🥋 <span className="hidden sm:inline">Train</span>
+            </button>
+            <button onClick={() => setAthleteOpen(true)} title="Athlete — strength, conditioning & mobility"
+              className="text-sm px-3 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 border border-sky-400/30 transition">
+              💪 <span className="hidden sm:inline">Athlete</span>
             </button>
             <button onClick={() => setDrillOpen(true)} title="Drill & quiz mode"
               className="text-sm px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-400/30 transition">
@@ -3339,7 +3596,7 @@ function App() {
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto grid-bg">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto grid-bg">
           <div key={animKey} className="fade-key max-w-5xl mx-auto px-4 sm:px-6 py-6">
             {/* Position hero */}
             <div className="grid lg:grid-cols-2 gap-5 mb-6">
@@ -3468,6 +3725,8 @@ function App() {
       {trainOpen && <TrainingModal currentId={currentId} activePlan={activePlan} defaultStyle={activePlan ? activePlan.style : null}
         onJump={(id) => { goTo(id, { viaArchive: true }); setTrainOpen(false); }}
         onClose={() => setTrainOpen(false)} />}
+
+      {athleteOpen && <ConditioningModal onClose={() => setAthleteOpen(false)} />}
     </div>
   );
 }
