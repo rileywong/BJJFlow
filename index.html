@@ -171,7 +171,8 @@ const POSITIONS = {
     transitions: [
       { label: "Shoot Double Leg", kind: "takedown", detail: "Level change, penetration step, drive through the hips and finish on top.", to: "side-top" },
       { label: "Single Leg → Run the Pipe", kind: "takedown", detail: "Capture a leg, clear the hips, and finish on top into side control.", to: "side-top" },
-      { label: "Snap Down to Front Headlock", kind: "transition", detail: "Break posture and snap the head down, forcing the opponent to turtle.", to: "turtle-top" },
+      { label: "Clinch Up", kind: "transition", detail: "Close the distance and tie up in the clinch / body-lock.", to: "clinch" },
+      { label: "Snap Down to Front Headlock", kind: "transition", detail: "Break posture and snap the head down into a front headlock.", to: "front-headlock" },
       { label: "Pull Closed Guard", kind: "transition", detail: "Sit to your seat with collar+sleeve grips and lock your legs around the waist.", to: "closed-guard-bottom" },
       { label: "Sit to Butterfly Guard", kind: "transition", detail: "Drop to a seated open guard with hooks ready under the thighs.", to: "butterfly-bottom" },
       { label: "Get Taken Down", kind: "escape", detail: "Opponent hits the takedown — you land underneath in side control bottom.", to: "side-bottom" },
@@ -198,6 +199,7 @@ const POSITIONS = {
       { label: "Kimura Sweep", kind: "sweep", detail: "Lock the kimura, off-balance, and roll up to side control on top.", to: "side-top" },
       { label: "Armbar from Guard", kind: "submission", detail: "Control the arm, angle off, and swing the leg over for juji-gatame.", to: "sub-armbar" },
       { label: "Triangle Choke", kind: "submission", detail: "Trap an arm in, shoot the legs up, lock the figure-four on the neck.", to: "sub-triangle" },
+      { label: "Omoplata", kind: "submission", detail: "Swing a leg over the shoulder and rotate into the shoulder lock.", to: "sub-omoplata" },
       { label: "Open to De La Riva", kind: "transition", detail: "Open the guard and establish a De La Riva hook as the opponent stands.", to: "dlr-bottom" },
       { label: "Posture Broken / Guard Opened", kind: "escape", detail: "Opponent posters up and opens you — they begin passing into half guard top.", to: "half-top" },
     ],
@@ -220,6 +222,7 @@ const POSITIONS = {
       { label: "Stand & Knee-Cut Pass", kind: "pass", detail: "Open the legs standing, slice the knee through, and pin into side control.", to: "side-top" },
       { label: "Stack Pass to Side Control", kind: "pass", detail: "Stack the hips overhead, clear the legs, and settle chest-to-chest.", to: "side-top" },
       { label: "Pass to Half Guard", kind: "pass", detail: "Open and drive a knee through — opponent retains a half-guard hook.", to: "half-top" },
+      { label: "Open to Headquarters (HQ)", kind: "transition", detail: "Open the legs and establish the HQ leg-pin to start passing open guard.", to: "hq-top" },
       { label: "Get Hip-Bumped / Swept", kind: "escape", detail: "Opponent times a sweep and reverses you — you land mounted.", to: "mount-bottom" },
       { label: "Caught in a Triangle", kind: "submission", detail: "You post an arm in and get triangled — opponent finishes the choke.", to: "sub-triangle" },
     ],
@@ -241,6 +244,8 @@ const POSITIONS = {
     transitions: [
       { label: "Berimbolo to the Back", kind: "backtake", detail: "Invert under the hips, rotate through, and come up with both hooks on the back.", to: "back-attacker" },
       { label: "DLR Sweep (Off-Balance)", kind: "sweep", detail: "Extend the hook and pull the sleeve to dump the opponent — come up on top.", to: "side-top" },
+      { label: "Switch to Reverse DLR", kind: "transition", detail: "Spiral the hook to the inside into reverse De La Riva.", to: "rdlr-bottom" },
+      { label: "K-Guard Entry", kind: "transition", detail: "Drop under the hips into K-guard to attack the legs.", to: "kguard-bottom" },
       { label: "Transition to Spider Guard", kind: "transition", detail: "Switch feet to the biceps and extend into spider control.", to: "spider-bottom" },
       { label: "Leg Entry to 50/50", kind: "transition", detail: "Underhook the leg and triangle into a 50/50 entanglement.", to: "fifty-fifty" },
       { label: "Leg-Dragged / Passed", kind: "escape", detail: "Opponent clears the hook with a leg-drag and pins you in side control.", to: "side-bottom" },
@@ -263,6 +268,7 @@ const POSITIONS = {
     transitions: [
       { label: "Tripod / Sickle Sweep", kind: "sweep", detail: "One foot on the hip, hook the heel, and topple the opponent to come up on top.", to: "side-top" },
       { label: "Spider Triangle", kind: "submission", detail: "Drag one arm across, shoot the legs up, and lock the triangle.", to: "sub-triangle" },
+      { label: "Lasso Entry", kind: "transition", detail: "Wrap one shin around the arm into a sticky lasso guard.", to: "lasso-bottom" },
       { label: "Transition to Butterfly", kind: "transition", detail: "Drop the feet to hooks and sit up into butterfly guard.", to: "butterfly-bottom" },
       { label: "Grips Broken / Passed", kind: "escape", detail: "Opponent strips the sleeves and smash-passes into side control.", to: "side-bottom" },
     ],
@@ -286,6 +292,7 @@ const POSITIONS = {
       { label: "Arm Drag to the Back", kind: "backtake", detail: "Two-on-one drag past the arm, slide to the hips, and take the back.", to: "back-attacker" },
       { label: "Sweep to Side Control", kind: "sweep", detail: "Off-balance and follow up on top into side control.", to: "side-top" },
       { label: "Shin-to-Shin → Ashi Garami", kind: "transition", detail: "Switch to a shin-to-shin grip and enter single-leg-X for the leg game.", to: "ashi" },
+      { label: "X-Guard Entry", kind: "transition", detail: "Slide underneath and build an X under the standing leg.", to: "xguard-bottom" },
       { label: "Flattened & Passed", kind: "escape", detail: "Opponent cross-faces, kills the hooks, and passes to side control.", to: "side-bottom" },
     ],
   },
@@ -370,9 +377,10 @@ const POSITIONS = {
     imagePrompt: "top athlete in side control with a tight cross-face and far-side underhook, chest-to-chest pressure, hips low and heavy.",
     transitions: [
       { label: "Knee-Slide to Mount", kind: "transition", detail: "Slide the near knee over the belly and settle into full mount.", to: "mount-top" },
+      { label: "Knee on Belly", kind: "transition", detail: "Post up and drive the knee onto the belly for mobile pressure.", to: "kob-top" },
       { label: "Take the Back", kind: "backtake", detail: "Opponent turns away; gift-wrap the arm and climb to the back.", to: "back-attacker" },
       { label: "Kimura / Americana", kind: "submission", detail: "Isolate the near arm and crank the figure-four shoulder lock.", to: "sub-kimura" },
-      { label: "North-South → Reset Pin", kind: "transition", detail: "Spin to north-south to clear a frame, then return to a tighter side control.", to: "side-top" },
+      { label: "Spin to North-South", kind: "transition", detail: "Float around to a head-to-head north-south pin.", to: "northsouth-top" },
       { label: "Guard Recovered", kind: "escape", detail: "Opponent frames and shrimps; you end up back inside their closed guard.", to: "closed-guard-top" },
     ],
   },
@@ -415,6 +423,7 @@ const POSITIONS = {
     transitions: [
       { label: "Armbar from Mount", kind: "submission", detail: "Climb to S-mount, isolate the arm, and spin to the juji-gatame.", to: "sub-armbar" },
       { label: "Cross-Collar Choke", kind: "submission", detail: "Feed both lapels deep and flare the elbows for the choke.", to: "sub-collar-choke" },
+      { label: "Arm Triangle (Kata-Gatame)", kind: "submission", detail: "Trap the head and arm, slide off to the side, and finish the strangle.", to: "sub-armtriangle" },
       { label: "Take the Back", kind: "backtake", detail: "Opponent turns to escape; ride the rotation and insert both hooks.", to: "back-attacker" },
       { label: "Upa / Bridge-and-Roll Reversed", kind: "escape", detail: "Opponent traps your arm and bridges — you're swept into their guard.", to: "closed-guard-top" },
     ],
@@ -499,6 +508,8 @@ const POSITIONS = {
     transitions: [
       { label: "Insert Hooks → Take the Back", kind: "backtake", detail: "Drop a hook in, roll the opponent up, and lock back control.", to: "back-attacker" },
       { label: "Break Down to Side Control", kind: "pass", detail: "Flatten the opponent off their knees and settle into side control.", to: "side-top" },
+      { label: "Roll to Crucifix", kind: "transition", detail: "Trap both arms and roll the opponent into a crucifix.", to: "crucifix" },
+      { label: "Roll to the Truck", kind: "transition", detail: "Trap a leg and roll into the truck to attack the back and legs.", to: "truck" },
       { label: "Spin to Guillotine", kind: "submission", detail: "Front headlock, spin to the front, and finish the guillotine choke.", to: "sub-guillotine" },
       { label: "Opponent Re-Guards", kind: "escape", detail: "Opponent granby rolls or sits to guard — back to butterfly.", to: "butterfly-bottom" },
     ],
@@ -591,6 +602,269 @@ const POSITIONS = {
     ],
   },
 
+  /* ----------------------------------------------------- STANDING / CLINCH */
+  "clinch": {
+    id: "clinch",
+    name: "Clinch / Body-Lock",
+    group: "Neutral",
+    rating: 0,
+    layout: "standing",
+    perspective: "neutral",
+    summary: "Tied up on the feet — the wrestling exchange before the takedown.",
+    alignment: "Both athletes locked up standing: collar tie, underhooks, or a body-lock. A neutral (0) grip-fighting battle that decides who initiates the takedown.",
+    top: "Win the inside position (underhooks/body-lock), break balance, and finish a takedown on top — or drag to the back.",
+    bottom: "Mirror the fight for underhooks. If losing the scramble, pull guard on your terms instead of conceding a takedown.",
+    grips: "Double-underhook body-lock, over-under, collar tie + two-on-one, Russian tie.",
+    imagePrompt: "two athletes clinched standing in a double-underhook body-lock, heads tight, fighting for inside position before a takedown.",
+    transitions: [
+      { label: "Body-Lock Takedown", kind: "takedown", detail: "Lock the hands behind the back, break balance, and trip/drive to top.", to: "side-top" },
+      { label: "Foot Sweep / Trip", kind: "takedown", detail: "Off-balance and sweep the leg to land on top in side control.", to: "side-top" },
+      { label: "Arm Drag to the Back", kind: "backtake", detail: "Drag the arm across and circle behind to take the back standing.", to: "back-attacker" },
+      { label: "Snap to Front Headlock", kind: "transition", detail: "Snap the head down off the clinch into a front headlock.", to: "front-headlock" },
+      { label: "Pull Guard", kind: "transition", detail: "Sit to guard with collar+sleeve control.", to: "closed-guard-bottom" },
+      { label: "Taken Down to Turtle", kind: "escape", detail: "Opponent finishes the takedown; you turn in to turtle to survive.", to: "turtle-bottom" },
+    ],
+  },
+
+  "front-headlock": {
+    id: "front-headlock",
+    name: "Front Headlock",
+    group: "Neutral",
+    rating: 1,
+    layout: "turtle",
+    perspective: "top",
+    summary: "Head-and-arm control off a snapdown — gateway to chokes and the back.",
+    alignment: "You control the opponent's head and one arm from the front while they are bent over or down. A favorable scramble hub (+1): chokes and back-takes are one step away.",
+    top: "Keep the head below the hips, hunt the guillotine or D'Arce, or spin behind to the back.",
+    bottom: "Pull the head out, stand up, or wrestle back up to neutral before the choke or back-take lands.",
+    grips: "Chin-strap + tricep control, guillotine grip, D'Arce/anaconda wrap.",
+    imagePrompt: "top athlete applying a front headlock on a bent-over opponent, chin-strap and arm control, threatening a guillotine.",
+    transitions: [
+      { label: "Guillotine Choke", kind: "submission", detail: "Wrap under the chin, close the guard or stand, and finish.", to: "sub-guillotine" },
+      { label: "D'Arce / Anaconda Choke", kind: "submission", detail: "Thread the arm through the neck-and-arm and squeeze the strangle.", to: "sub-darce" },
+      { label: "Go Behind to the Back", kind: "backtake", detail: "Shuck the head and circle to the hips, taking the back.", to: "back-attacker" },
+      { label: "Break Down to Turtle Top", kind: "transition", detail: "Drive the opponent flat to their hands and knees and ride the turtle.", to: "turtle-top" },
+      { label: "Opponent Stands & Escapes", kind: "escape", detail: "Opponent posts and stands up, returning to neutral.", to: "standing" },
+    ],
+  },
+
+  /* -------------------------------------------------------- ADVANCED GUARDS */
+  "rdlr-bottom": {
+    id: "rdlr-bottom",
+    name: "Reverse De La Riva",
+    group: "Guard",
+    rating: 1,
+    layout: "guard-bottom",
+    perspective: "bottom",
+    summary: "Inside hook spiraled around the lead leg — a back-take & leg-lock hub.",
+    alignment: "Open guard with your inside (reverse DLR) hook spiraling around the opponent's lead leg, knee across their thigh. Strong against knee-cut passers and a launchpad for back-takes and leg entries.",
+    top: "Free the knee, flatten the hook, and pass (knee-cut or leg-drag) before the back-take develops.",
+    bottom: "Off-balance, take the back with a kiss-of-the-dragon roll, or feed into a K-guard leg entry.",
+    grips: "RDLR hook + knee-line control, lapel/pant-cuff grip, two-on-one for the back take.",
+    imagePrompt: "bottom athlete in reverse de la riva guard, inside hook spiraled around the opponent's lead leg, controlling the knee line.",
+    transitions: [
+      { label: "Kiss of the Dragon (Back Take)", kind: "backtake", detail: "Invert under the leg and spin through to the back.", to: "back-attacker" },
+      { label: "RDLR Sweep", kind: "sweep", detail: "Off-balance over the hooked leg and come up on top.", to: "side-top" },
+      { label: "Switch to De La Riva", kind: "transition", detail: "Spin the hook to the outside into standard De La Riva.", to: "dlr-bottom" },
+      { label: "K-Guard Entry", kind: "transition", detail: "Drop under the hips into K-guard to hunt the legs.", to: "kguard-bottom" },
+      { label: "Knee Freed & Passed", kind: "escape", detail: "Opponent clears the knee and passes to side control.", to: "side-bottom" },
+    ],
+  },
+
+  "xguard-bottom": {
+    id: "xguard-bottom",
+    name: "X-Guard",
+    group: "Guard",
+    rating: 1,
+    layout: "guard-bottom",
+    perspective: "bottom",
+    summary: "Underneath the standing opponent, legs crossed under one leg — a sweep machine.",
+    alignment: "You are underneath a standing opponent with your legs forming an X under their thigh, controlling the far ankle. Almost purely offensive: very low submission risk, very high sweep rate.",
+    top: "Free the trapped leg, base out, and re-flatten the bottom player to pass.",
+    bottom: "Extend the legs to off-balance, sweep up on top, or transition to single-leg-X for leg attacks.",
+    grips: "X-hooks under the thigh + far-ankle grip + pant-cuff/sleeve.",
+    imagePrompt: "bottom athlete in x-guard under a standing opponent, legs crossed under the thigh, gripping the far ankle to off-balance.",
+    transitions: [
+      { label: "Technical Stand-Up Sweep", kind: "sweep", detail: "Extend the legs, recover a knee, and come up on top into side control.", to: "side-top" },
+      { label: "Transition to Single-Leg-X", kind: "transition", detail: "Switch the X to single-leg-X (ashi) to threaten the legs.", to: "ashi" },
+      { label: "Off-Balance to the Back", kind: "backtake", detail: "Dump the opponent forward and climb onto the back.", to: "back-attacker" },
+      { label: "Leg Freed & Passed", kind: "escape", detail: "Opponent frees the leg and passes to side control.", to: "side-bottom" },
+    ],
+  },
+
+  "lasso-bottom": {
+    id: "lasso-bottom",
+    name: "Lasso Guard",
+    group: "Guard",
+    rating: 1,
+    layout: "guard-bottom",
+    perspective: "bottom",
+    summary: "A leg lassoed around the arm — sticky control for sweeps and omoplatas.",
+    alignment: "On your back with one shin lassoed around the opponent's arm and a sleeve grip, the other foot managing distance. A control-heavy guard that's hard to pass and feeds omoplatas and sweeps.",
+    top: "Unwind the lasso, pin the hips, and pass — or back-step out of the lasso.",
+    bottom: "Use the lasso to control posture and angle, then sweep, hit an omoplata, or shoot a triangle.",
+    grips: "Lasso (shin around arm) + sleeve + opposite-collar or pant grip.",
+    imagePrompt: "bottom athlete in lasso guard, one shin wrapped around the opponent's arm gripping the sleeve, controlling posture.",
+    transitions: [
+      { label: "Lasso Sweep", kind: "sweep", detail: "Off-balance off the lassoed arm and come up on top.", to: "side-top" },
+      { label: "Omoplata", kind: "submission", detail: "Swing the leg over the shoulder and rotate into the shoulder lock.", to: "sub-omoplata" },
+      { label: "Triangle Choke", kind: "submission", detail: "Free the lasso to the neck and lock the triangle.", to: "sub-triangle" },
+      { label: "Switch to Spider", kind: "transition", detail: "Release the lasso into a foot-on-bicep spider grip.", to: "spider-bottom" },
+      { label: "Lasso Cleared & Passed", kind: "escape", detail: "Opponent unwinds the lasso and passes to side control.", to: "side-bottom" },
+    ],
+  },
+
+  "kguard-bottom": {
+    id: "kguard-bottom",
+    name: "K-Guard",
+    group: "Guard",
+    rating: 1,
+    layout: "guard-bottom",
+    perspective: "bottom",
+    summary: "Modern under-the-hips guard built to enter the leg-lock game.",
+    alignment: "You are tucked under the opponent's hips with your legs in a 'K' shape, an arm threaded for an Iminari/leg entry. A premier modern entry into ashi and the saddle.",
+    top: "Clear the head and hips, free the trapped knee, and pass before the leg entry completes.",
+    bottom: "Iminari-roll or extend into single-leg-X / saddle to start the leg-lock sequence, or take the back.",
+    grips: "K-frame on the leg + underhook on the far leg, lapel feed under the hips.",
+    imagePrompt: "bottom athlete in k-guard tucked under the opponent's hips, legs in a K shape, arm threaded for a leg-lock entry.",
+    transitions: [
+      { label: "Enter Single-Leg-X", kind: "transition", detail: "Iminari-roll into single-leg-X ashi garami.", to: "ashi" },
+      { label: "Roll to Saddle", kind: "transition", detail: "Roll through into the saddle (inside sankaku).", to: "saddle" },
+      { label: "Back Take", kind: "backtake", detail: "Come up behind the hips to take the back.", to: "back-attacker" },
+      { label: "Head Cleared & Passed", kind: "escape", detail: "Opponent clears the head/hips and passes to side control.", to: "side-bottom" },
+    ],
+  },
+
+  /* ------------------------------------------------ TOP CONTROL / PASSING */
+  "hq-top": {
+    id: "hq-top",
+    name: "Headquarters (HQ)",
+    group: "Side Control",
+    rating: 1,
+    layout: "guard-top",
+    perspective: "top",
+    summary: "The neutral passing hub vs open guard — knee pinning the thigh.",
+    alignment: "On top vs open guard, your knee pins across the opponent's thigh ('HQ' / leg-pin) with their other leg controlled. The central decision point of modern passing.",
+    top: "From HQ, choose your pass — leg-drag, knee-cut, long-step, or folding pass — and advance.",
+    bottom: "Recover a hook or frame to off-balance and sweep before the pass starts.",
+    grips: "Cross-knee leg-pin + double pant-grip or sleeve/cross-face.",
+    imagePrompt: "top athlete in the headquarters passing position, knee pinning across the opponent's thigh, controlling both legs.",
+    transitions: [
+      { label: "Leg Drag", kind: "pass", detail: "Drag the leg across the centerline into the leg-drag position.", to: "legdrag-top" },
+      { label: "Knee-Cut Pass", kind: "pass", detail: "Slice the knee through and settle into side control.", to: "side-top" },
+      { label: "Long-Step to the Back", kind: "backtake", detail: "Step over and spin to the back as the opponent turns.", to: "back-attacker" },
+      { label: "Folding Pass to Mount", kind: "pass", detail: "Fold the legs to the chest and ride up into mount.", to: "mount-top" },
+      { label: "Swept by Open Guard", kind: "escape", detail: "Opponent off-balances you and comes up — you're swept.", to: "side-bottom" },
+    ],
+  },
+
+  "legdrag-top": {
+    id: "legdrag-top",
+    name: "Leg Drag",
+    group: "Side Control",
+    rating: 2,
+    layout: "side",
+    perspective: "top",
+    summary: "Opponent's leg dragged across the body — a near-finished pass.",
+    alignment: "You have dragged the opponent's leg across your centerline and are chest-to-hip, weight pinning the dragged leg. A strong passing position (+2) one step from side control or the back.",
+    top: "Kill the hips, settle into side control, or spin straight to the back.",
+    bottom: "Re-pummel the leg in and recover guard before the position settles.",
+    grips: "Leg-drag (thigh across body) + cross-collar/near-hip, far-side sleeve.",
+    imagePrompt: "top athlete in the leg drag position, the opponent's leg dragged across the body, controlling the hip.",
+    transitions: [
+      { label: "Settle to Side Control", kind: "pass", detail: "Drop the hips and consolidate chest-to-chest in side control.", to: "side-top" },
+      { label: "Take the Back", kind: "backtake", detail: "Drive to the hip and climb onto the back.", to: "back-attacker" },
+      { label: "Guard Recovered", kind: "escape", detail: "Opponent re-pummels and recovers guard.", to: "closed-guard-top" },
+    ],
+  },
+
+  "kob-top": {
+    id: "kob-top",
+    name: "Knee on Belly",
+    group: "Side Control",
+    rating: 3,
+    layout: "side",
+    perspective: "top",
+    summary: "Knee driving into the torso — mobile, high-scoring top pressure.",
+    alignment: "You are perched with your knee on the opponent's belly, posted on the far collar and pant, hips high and mobile. A dominant, points-scoring position (+3) that pressures escapes into submissions.",
+    top: "Ride the bridges, then spin to mount, take the back, or finish a far-side armbar or collar choke.",
+    bottom: "Frame the knee off the belly, bridge, and recover guard or come to turtle.",
+    grips: "Knee-on-belly + collar + near-pant/knee post.",
+    imagePrompt: "top athlete in knee-on-belly, one knee driving into the opponent's torso, posted high on the collar.",
+    transitions: [
+      { label: "Spin to Mount", kind: "transition", detail: "Step the posting leg over and settle into full mount.", to: "mount-top" },
+      { label: "Far-Side Armbar", kind: "submission", detail: "Trap the far arm and swing the leg over for the armbar.", to: "sub-armbar" },
+      { label: "Baseball-Bat Collar Choke", kind: "submission", detail: "Feed both hands to the collar and drop over for the choke.", to: "sub-collar-choke" },
+      { label: "Take the Back", kind: "backtake", detail: "Opponent turns from the pressure; ride to the back.", to: "back-attacker" },
+      { label: "Drop Back to Side Control", kind: "transition", detail: "Re-settle chest-to-chest into a tight side control.", to: "side-top" },
+      { label: "Guard Recovered", kind: "escape", detail: "Opponent frames the knee off and recovers guard.", to: "closed-guard-top" },
+    ],
+  },
+
+  "northsouth-top": {
+    id: "northsouth-top",
+    name: "North-South",
+    group: "Side Control",
+    rating: 3,
+    layout: "side",
+    perspective: "top",
+    summary: "Head-to-head top pin — chokes, kimuras, and a path back to side.",
+    alignment: "You are chest-to-chest but inverted, head over the opponent's head, hips floating. A strong control (+3) that nullifies framing and opens the north-south choke and kimura.",
+    top: "Maintain the float, finish the north-south/D'Arce choke or kimura, or return to side control / mount.",
+    bottom: "Frame, turn in, and recover guard or come up to turtle.",
+    grips: "Underhooks + head pin, kimura figure-four, D'Arce wrap.",
+    imagePrompt: "top athlete in the north-south position, head over the opponent's head, chest-to-chest, hips floating.",
+    transitions: [
+      { label: "North-South / D'Arce Choke", kind: "submission", detail: "Thread the arm under the neck and squeeze the strangle.", to: "sub-darce" },
+      { label: "Kimura", kind: "submission", detail: "Isolate the arm and crank the figure-four shoulder lock.", to: "sub-kimura" },
+      { label: "Return to Side Control", kind: "transition", detail: "Walk the hips back around to a chest-to-chest side control.", to: "side-top" },
+      { label: "Spin to Mount", kind: "transition", detail: "Float around the head and settle into mount.", to: "mount-top" },
+    ],
+  },
+
+  /* ----------------------------------------------------- BACK / SCRAMBLE+ */
+  "crucifix": {
+    id: "crucifix",
+    name: "Crucifix",
+    group: "Back Control",
+    rating: 4,
+    layout: "back",
+    perspective: "top",
+    summary: "Both of the opponent's arms trapped from the back/turtle — brutal control.",
+    alignment: "From turtle or the back, you trap one of the opponent's arms with your legs and the other with your arms, crucifying them. A dominant attacking position (+4) with both their arms neutralized.",
+    top: "Both arms are dead — finish the rear naked or collar choke, or upgrade to full back control.",
+    bottom: "Free a trapped arm and turn back into turtle to survive.",
+    grips: "Legs trapping one arm + over/under harness on the other.",
+    imagePrompt: "top athlete in the crucifix position, both of the opponent's arms trapped from the back, applying a strangle.",
+    transitions: [
+      { label: "Rear Naked Choke", kind: "submission", detail: "Slide the free arm under the chin and finish.", to: "sub-rnc" },
+      { label: "Far-Side Collar Choke", kind: "submission", detail: "Use the lapel to finish a collar strangle with both arms trapped.", to: "sub-collar-choke" },
+      { label: "Upgrade to Back Control", kind: "transition", detail: "Release a leg and climb to full back control with both hooks.", to: "back-attacker" },
+      { label: "Arm Freed — back to Turtle", kind: "escape", detail: "Opponent frees an arm and re-turtles.", to: "turtle-top" },
+    ],
+  },
+
+  "truck": {
+    id: "truck",
+    name: "The Truck",
+    group: "Back Control",
+    rating: 3,
+    layout: "back",
+    perspective: "top",
+    summary: "Inverted back-attack entanglement — heel hooks, twisters, back-takes.",
+    alignment: "An inverted entanglement off the turtle/back where you trap a leg and roll the opponent, exposing the back, twister, and backside heel hook. A strong attacking scramble position (+3).",
+    top: "Take the back, finish the backside heel hook, or hit the twister.",
+    bottom: "Untangle the trapped leg and re-turtle or scramble out.",
+    grips: "Trapped near-leg + far-side seatbelt, twister/banana-split control.",
+    imagePrompt: "athlete attacking from the truck position, opponent inverted with one leg trapped, exposing the back for a twister or heel hook.",
+    transitions: [
+      { label: "Backside Heel Hook", kind: "submission", detail: "Isolate the trapped heel and rotate to finish.", to: "sub-heelhook" },
+      { label: "Twister", kind: "submission", detail: "Trap the head and leg and crank the spinal/neck lock.", to: "sub-twister" },
+      { label: "Take the Back", kind: "backtake", detail: "Roll up to full back control with the seatbelt.", to: "back-attacker" },
+      { label: "Transition to Crucifix", kind: "transition", detail: "Trap the arms and convert to a crucifix.", to: "crucifix" },
+    ],
+  },
+
   /* --------------------------------------------------------------- SUBMISSIONS */
   "sub-rnc": subNode("sub-rnc", "Rear Naked Choke", "Mata-leão — choking arm under the chin, second hand behind the head. A blood choke; the match is over.", "attacker finishing a rear naked choke from back control, both hooks in, choking arm under the chin, second hand behind the head, opponent tapping."),
   "sub-armbar": subNode("sub-armbar", "Armbar (Juji-Gatame)", "Hips elevated, the opponent's arm trapped thumb-up between your thighs, hyperextending the elbow.", "attacker finishing a juji-gatame armbar, hips raised, opponent's arm extended thumb-up between the thighs."),
@@ -602,6 +876,10 @@ const POSITIONS = {
   "sub-kneebar": subNode("sub-kneebar", "Kneebar", "The leg extended and the hips bridged into the knee joint, hyperextending it.", "attacker finishing a kneebar, the opponent's leg extended and trapped between the thighs, hips bridging into the knee."),
   "sub-straightankle": subNode("sub-straightankle", "Straight Ankle Lock", "Foot trapped under the armpit, bridging to extend the ankle (Achilles lock).", "attacker finishing a straight ankle lock, the opponent's foot trapped under the armpit, hips bridged to extend the ankle."),
   "sub-toehold": subNode("sub-toehold", "Toe Hold", "Figure-four grip on the foot, rotating the toes to torque the ankle and knee.", "attacker finishing a toe hold, figure-four grip on the opponent's foot rotating the ankle."),
+  "sub-omoplata": subNode("sub-omoplata", "Omoplata", "Shoulder lock from guard — the leg traps the shoulder and rotation hyper-rotates it.", "bottom athlete finishing an omoplata shoulder lock, leg over the opponent's shoulder, sitting up to rotate the joint."),
+  "sub-darce": subNode("sub-darce", "D'Arce / Anaconda", "Arm-in head-and-arm strangle threaded through the neck and one shoulder.", "attacker finishing a d'arce choke, arm threaded under the neck and through the armpit, squeezing the head-and-arm strangle."),
+  "sub-twister": subNode("sub-twister", "Twister", "A spinal/neck crank finished from the truck, bending the torso laterally.", "attacker finishing a twister from the truck position, head and leg trapped, torquing the spine."),
+  "sub-armtriangle": subNode("sub-armtriangle", "Arm Triangle (Kata-Gatame)", "Head-and-arm strangle from the top, the opponent's own shoulder closing one side of the neck.", "top athlete finishing an arm-triangle kata-gatame from mount or side control, head and arm trapped, shoulder pressing the neck."),
 };
 
 // Helper: every submission is a terminal "finish" node that resets to standing.
@@ -633,6 +911,99 @@ const KIND_META = {
   escape:     { label: "Escape",     icon: "🛡️", ring: "ring-slate-400/40",   dot: "bg-slate-300",   text: "text-slate-300" },
   transition: { label: "Transition", icon: "↪️", ring: "ring-cyan-500/40",    dot: "bg-cyan-400",    text: "text-cyan-300" },
   reset:      { label: "Reset",      icon: "♻️", ring: "ring-indigo-500/40",  dot: "bg-indigo-400",  text: "text-indigo-300" },
+};
+
+//////////////////////////////////////////////////////////////////////////////
+//  GAME-PLAN STYLE PRESETS
+//  ---------------------------------------------------------------------------
+//  A preset seeds a game plan with preferred actions (the "A-game") keyed by
+//  position id -> exact transition label. Users start from one of these and
+//  then customize. Pick labels must match transition labels exactly.
+//////////////////////////////////////////////////////////////////////////////
+
+const STYLE_PRESETS = {
+  "Blank": { emoji: "🧱", blurb: "Empty plan — build it yourself from scratch.", picks: {} },
+  "Pressure Passer": {
+    emoji: "🪨",
+    blurb: "Smash, pass, mount, finish. Classic top pressure for a points-and-position game.",
+    picks: {
+      "standing": "Shoot Double Leg",
+      "closed-guard-top": "Stand & Knee-Cut Pass",
+      "hq-top": "Knee-Cut Pass",
+      "half-top": "Knee-Cut to Side Control",
+      "side-top": "Knee-Slide to Mount",
+      "kob-top": "Spin to Mount",
+      "mount-top": "Cross-Collar Choke",
+      "turtle-top": "Break Down to Side Control",
+      "back-attacker": "Rear Naked Choke",
+    },
+  },
+  "Berimbolo / Back-Take": {
+    emoji: "🌀",
+    blurb: "Pull guard, invert, and live on the back. Modern bottom game for back-take hunters.",
+    picks: {
+      "standing": "Pull Closed Guard",
+      "closed-guard-bottom": "Open to De La Riva",
+      "dlr-bottom": "Berimbolo to the Back",
+      "rdlr-bottom": "Kiss of the Dragon (Back Take)",
+      "butterfly-bottom": "Arm Drag to the Back",
+      "back-attacker": "Bow & Arrow Choke",
+    },
+  },
+  "Leg Locker": {
+    emoji: "🦿",
+    blurb: "Enter the legs early and finish heel hooks. Ashi → saddle → finish.",
+    picks: {
+      "standing": "Sit to Butterfly Guard",
+      "butterfly-bottom": "Shin-to-Shin → Ashi Garami",
+      "ashi": "Transition to Saddle",
+      "saddle": "Inside Heel Hook",
+      "dlr-bottom": "K-Guard Entry",
+      "kguard-bottom": "Roll to Saddle",
+      "fifty-fifty": "Inside Heel Hook",
+      "truck": "Backside Heel Hook",
+    },
+  },
+  "Wrestler / Top": {
+    emoji: "🤼",
+    blurb: "Takedowns, heavy top control, and the crucifix/back. A wrestling-first ruleset game.",
+    picks: {
+      "standing": "Shoot Double Leg",
+      "clinch": "Body-Lock Takedown",
+      "side-top": "Knee on Belly",
+      "kob-top": "Far-Side Armbar",
+      "mount-top": "Armbar from Mount",
+      "turtle-top": "Roll to Crucifix",
+      "crucifix": "Rear Naked Choke",
+      "back-attacker": "Rear Naked Choke",
+    },
+  },
+  "Submission Hunter": {
+    emoji: "🎯",
+    blurb: "Always attacking — triangles, omoplatas, armbars, and chokes from everywhere.",
+    picks: {
+      "standing": "Pull Closed Guard",
+      "closed-guard-bottom": "Triangle Choke",
+      "spider-bottom": "Spider Triangle",
+      "lasso-bottom": "Omoplata",
+      "side-top": "Kimura / Americana",
+      "mount-top": "Armbar from Mount",
+      "front-headlock": "Guillotine Choke",
+      "back-attacker": "Rear Naked Choke",
+    },
+  },
+  "Modern Half-Guard": {
+    emoji: "🛡️",
+    blurb: "Underhook half guard and deep half — come up to the back or sweep, then finish.",
+    picks: {
+      "standing": "Pull Closed Guard",
+      "closed-guard-bottom": "Open to De La Riva",
+      "half-bottom": "Underhook → Take the Back",
+      "deep-half-bottom": "Waiter Sweep",
+      "side-top": "Take the Back",
+      "back-attacker": "Rear Naked Choke",
+    },
+  },
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -799,14 +1170,25 @@ function RatingGauge({ rating }) {
   );
 }
 
-function TransitionCard({ t, onClick }) {
+function TransitionCard({ t, onClick, planned, planActive, onTogglePlan }) {
   const meta = KIND_META[t.kind] || KIND_META.transition;
   const target = POSITIONS[t.to];
   return (
-    <button
+    <div
       onClick={onClick}
-      className={`node-card group text-left w-full rounded-2xl glass ring-1 ${meta.ring} hover:ring-2 p-4 hover:bg-ink-700/40 focus:outline-none focus:ring-2`}
+      className={`node-card group relative cursor-pointer text-left w-full rounded-2xl glass ring-1 ${planned ? "ring-2 ring-amber-400/70 bg-amber-400/5" : meta.ring} hover:ring-2 p-4 hover:bg-ink-700/40`}
     >
+      {planned && (
+        <span className="absolute -top-2 left-4 px-2 py-0.5 rounded-full bg-amber-400 text-ink-950 text-[10px] font-bold tracking-wide shadow-lg">★ A-GAME</span>
+      )}
+      {planActive && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onTogglePlan(); }}
+          title={planned ? "Remove from this game plan" : "Set as my go-to from here"}
+          className={`absolute top-2.5 right-2.5 z-10 h-7 w-7 rounded-lg text-sm flex items-center justify-center transition ${planned ? "bg-amber-400 text-ink-950" : "bg-ink-700 text-slate-400 hover:text-amber-300 hover:bg-ink-600"}`}>
+          📌
+        </button>
+      )}
       <div className="flex items-start gap-3">
         <div className="text-2xl leading-none mt-0.5 select-none">{meta.icon}</div>
         <div className="flex-1 min-w-0">
@@ -818,12 +1200,14 @@ function TransitionCard({ t, onClick }) {
           <div className="font-semibold text-slate-100 group-hover:text-white">{t.label}</div>
           <div className="text-xs text-slate-400 mt-1 leading-relaxed">{t.detail}</div>
         </div>
-        <svg className="w-5 h-5 text-slate-600 group-hover:text-slate-300 transition-transform group-hover:translate-x-1 shrink-0 mt-1"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
+        {!planActive && (
+          <svg className="w-5 h-5 text-slate-600 group-hover:text-slate-300 transition-transform group-hover:translate-x-1 shrink-0 mt-1"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        )}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -1093,6 +1477,159 @@ function MapGraph({ current, onPick, onClose }) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//  NOTES — personal per-position notes (comp-prep reminders)
+//////////////////////////////////////////////////////////////////////////////
+
+function NotesCard({ value, onChange }) {
+  return (
+    <div className="rounded-2xl glass ring-1 ring-white/5 p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-base">📝</span>
+        <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">My Notes</h3>
+        <span className="text-[10px] text-slate-600 ml-auto">saved automatically</span>
+      </div>
+      <textarea
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Your reminders for this position — grips to hit, mistakes to avoid, your favorite setup, opponent tendencies…"
+        className="w-full h-24 resize-y bg-ink-850 border border-white/8 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 leading-relaxed"
+      />
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//  GAME PLAN MANAGER — build & customize a style-specific competition plan
+//////////////////////////////////////////////////////////////////////////////
+
+function GamePlanModal({ plans, activeId, active, onCreate, onDelete, onSetActive, onClearPick, onFollow, onJump, onClose }) {
+  const [name, setName] = React.useState("");
+  const [style, setStyle] = React.useState("Pressure Passer");
+
+  const picks = active ? Object.entries(active.picks) : [];
+  // A line is "followable" if standing has a pick.
+  const hasLine = active && active.picks["standing"];
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink-950/85 backdrop-blur-sm">
+      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3">
+        <span className="text-lg">🧠</span>
+        <h2 className="font-display font-semibold text-white">Game Plans</h2>
+        <span className="hidden sm:block text-xs text-slate-500">build your competition A-game · 📌 actions on each position to add your go-to moves</span>
+        <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 grid lg:grid-cols-[320px_1fr] gap-6">
+          {/* LEFT: plan list + create */}
+          <div className="space-y-4">
+            <div className="rounded-2xl glass ring-1 ring-white/5 p-4">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">New Plan</h3>
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Plan name (e.g. IBJJF Blue Belt)"
+                className="w-full bg-ink-850 border border-white/8 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 mb-2" />
+              <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-1">Start from a style</label>
+              <select value={style} onChange={e => setStyle(e.target.value)}
+                className="w-full bg-ink-850 border border-white/8 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 mb-2">
+                {Object.keys(STYLE_PRESETS).map(s => <option key={s} value={s}>{STYLE_PRESETS[s].emoji} {s}</option>)}
+              </select>
+              <p className="text-xs text-slate-500 leading-relaxed mb-3 min-h-[2.5rem]">{STYLE_PRESETS[style].blurb}</p>
+              <button onClick={() => { onCreate(name, style); setName(""); }}
+                className="w-full text-sm font-semibold px-3 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white transition">
+                + Create Plan
+              </button>
+            </div>
+
+            <div className="rounded-2xl glass ring-1 ring-white/5 p-4">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">My Plans ({plans.length})</h3>
+              {plans.length === 0 && <p className="text-xs text-slate-500">No plans yet — create one above to start mapping your A-game.</p>}
+              <div className="space-y-1.5">
+                {plans.map(p => {
+                  const isActive = p.id === activeId;
+                  const count = Object.keys(p.picks).length;
+                  return (
+                    <div key={p.id} className={`group/p flex items-center rounded-lg pr-1 transition ${isActive ? "bg-indigo-500/15 ring-1 ring-indigo-400/40" : "hover:bg-ink-700/60"}`}>
+                      <button onClick={() => onSetActive(p.id)} className="flex-1 min-w-0 text-left px-3 py-2">
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-sm">{STYLE_PRESETS[p.style]?.emoji || "🧠"}</span>
+                          <span className={`text-sm truncate ${isActive ? "text-white font-semibold" : "text-slate-200"}`}>{p.name}</span>
+                          {isActive && <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-400/20 text-indigo-200 font-bold">ACTIVE</span>}
+                        </span>
+                        <span className="block text-[11px] text-slate-500">{p.style} · {count} move{count !== 1 ? "s" : ""}</span>
+                      </button>
+                      <button onClick={() => onDelete(p.id)} title="Delete plan"
+                        className="shrink-0 px-2 text-slate-600 hover:text-rose-300 opacity-0 group-hover/p:opacity-100 transition">✕</button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: active plan detail */}
+          <div>
+            {!active ? (
+              <div className="h-full rounded-2xl glass ring-1 ring-white/5 flex items-center justify-center text-center p-10">
+                <div>
+                  <div className="text-4xl mb-3">🧠</div>
+                  <p className="text-slate-300 font-medium">Select or create a plan</p>
+                  <p className="text-slate-500 text-sm mt-1 max-w-sm">Then browse positions and tap 📌 on the actions you'd actually use. Your plan becomes a personalized decision tree for competition.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-2xl glass ring-1 ring-white/5 p-5 bg-gradient-to-br from-indigo-500/10 to-transparent">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{STYLE_PRESETS[active.style]?.emoji || "🧠"}</span>
+                        <h3 className="font-display text-xl font-bold text-white">{active.name}</h3>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">{active.style} style · {picks.length} planned move{picks.length !== 1 ? "s" : ""}</p>
+                    </div>
+                    <button onClick={onFollow} disabled={!hasLine}
+                      title={hasLine ? "Walk your planned line from standing" : "Set a go-to from Standing to enable"}
+                      className="text-sm font-semibold px-4 py-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-400 text-ink-950 disabled:opacity-30 disabled:cursor-not-allowed transition">
+                      ▶ Follow My Line
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl glass ring-1 ring-white/5 p-4">
+                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Planned Responses</h4>
+                  {picks.length === 0 ? (
+                    <p className="text-sm text-slate-500">No moves yet. Close this, navigate to a position, and tap 📌 on the action you'd choose.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {picks.map(([posId, label]) => {
+                        const pos = POSITIONS[posId];
+                        if (!pos) return null;
+                        const tr = pos.transitions.find(t => t.label === label);
+                        const meta = tr ? (KIND_META[tr.kind] || KIND_META.transition) : KIND_META.transition;
+                        return (
+                          <div key={posId} className="group/pick flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-ink-700/50 transition">
+                            <RatingPip rating={pos.rating} />
+                            <button onClick={() => onJump(posId)} className="flex-1 min-w-0 text-left">
+                              <span className="block text-sm text-slate-200 truncate">{pos.name}</span>
+                              <span className={`block text-xs ${meta.text} truncate`}>{meta.icon} {label}</span>
+                            </button>
+                            <button onClick={() => onClearPick(posId)} title="Remove this move"
+                              className="shrink-0 px-2 text-slate-600 hover:text-rose-300 opacity-0 group-hover/pick:opacity-100 transition">✕</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //  MAIN APP
 //////////////////////////////////////////////////////////////////////////////
 
@@ -1102,12 +1639,60 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [animKey, setAnimKey] = React.useState(0);
   const [mapOpen, setMapOpen] = React.useState(false);
+  const [plansOpen, setPlansOpen] = React.useState(false);
   const [favorites, setFavorites] = useLocalStorage("bjjflow:favs", []);
   const [savedFlows, setSavedFlows] = useLocalStorage("bjjflow:flows", []);
+  const [notes, setNotes] = useLocalStorage("bjjflow:notes", {});
+  const [plans, setPlans] = useLocalStorage("bjjflow:plans", []);
+  const [activePlanId, setActivePlanId] = useLocalStorage("bjjflow:activePlan", null);
 
   const currentId = history[history.length - 1];
   const pos = POSITIONS[currentId];
   const isFav = favorites.includes(currentId);
+  const activePlan = plans.find(p => p.id === activePlanId) || null;
+  const plannedLabel = activePlan ? activePlan.picks[currentId] : null;
+
+  const updateActivePlan = (mut) =>
+    setPlans(ps => ps.map(p => (p.id === activePlanId ? mut(p) : p)));
+
+  const setPick = (posId, label) => {
+    if (!activePlan) return;
+    updateActivePlan(p => {
+      const picks = { ...p.picks };
+      if (picks[posId] === label) delete picks[posId];
+      else picks[posId] = label;
+      return { ...p, picks };
+    });
+  };
+  const clearPick = (posId) =>
+    updateActivePlan(p => { const picks = { ...p.picks }; delete picks[posId]; return { ...p, picks }; });
+
+  const createPlan = (name, style) => {
+    const preset = STYLE_PRESETS[style] || { picks: {} };
+    const id = Date.now();
+    const plan = { id, name: (name && name.trim()) || style, style, picks: { ...preset.picks } };
+    setPlans(ps => [plan, ...ps]);
+    setActivePlanId(id);
+  };
+  const deletePlan = (id) => {
+    setPlans(ps => ps.filter(p => p.id !== id));
+    if (activePlanId === id) setActivePlanId(null);
+  };
+  const followPlan = () => {
+    if (!activePlan) return;
+    const chain = ["standing"]; const seen = new Set(["standing"]); let cur = "standing";
+    for (let i = 0; i < 60; i++) {
+      const label = activePlan.picks[cur];
+      if (!label) break;
+      const tr = (POSITIONS[cur].transitions || []).find(t => t.label === label);
+      if (!tr) break;
+      chain.push(tr.to);
+      if (seen.has(tr.to) || POSITIONS[tr.to].group === "Submissions") break;
+      seen.add(tr.to); cur = tr.to;
+    }
+    setHistory(chain); setAnimKey(k => k + 1); setPlansOpen(false);
+  };
+  const setNote = (posId, text) => setNotes(n => ({ ...n, [posId]: text }));
 
   const toggleFav = (id) =>
     setFavorites(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
@@ -1184,6 +1769,10 @@ function App() {
               className={`text-sm px-2.5 py-1.5 rounded-lg border transition ${isFav ? "bg-amber-500/20 text-amber-300 border-amber-400/40" : "bg-ink-700 hover:bg-ink-600 text-slate-300 border-white/5"}`}>
               {isFav ? "★" : "☆"}
             </button>
+            <button onClick={() => setPlansOpen(true)} title="Game plans"
+              className="text-sm px-3 py-1.5 rounded-lg bg-violet-500/15 hover:bg-violet-500/25 text-violet-200 border border-violet-400/30 transition">
+              🧠 <span className="hidden sm:inline">Plans</span>
+            </button>
             <button onClick={() => setMapOpen(true)} title="Open the flow map"
               className="text-sm px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 transition">
               🗺️ <span className="hidden sm:inline">Map</span>
@@ -1204,6 +1793,12 @@ function App() {
         <div className="shrink-0 px-4 sm:px-6 py-2.5 border-b border-white/5 bg-ink-900/40 flex items-center gap-3 overflow-x-auto">
           <span className="text-[10px] uppercase tracking-widest text-slate-500 shrink-0">Flow Path</span>
           <Breadcrumb history={history} onJump={jumpTo} />
+          {activePlan && (
+            <button onClick={() => setPlansOpen(true)} title="Active game plan"
+              className="shrink-0 flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-200 border border-violet-400/30 hover:bg-violet-500/25 transition">
+              {STYLE_PRESETS[activePlan.style]?.emoji || "🧠"} {activePlan.name}
+            </button>
+          )}
           <button onClick={saveCurrentFlow} disabled={history.length < 2}
             title="Save this flow path"
             className="ml-auto shrink-0 text-xs px-2.5 py-1 rounded-md bg-ink-700 hover:bg-ink-600 text-slate-300 border border-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition">
@@ -1266,14 +1861,28 @@ function App() {
               <InfoCard icon="✊" title="Common Grips & Controls" body={pos.grips} className="sm:col-span-2" accent="amber" />
             </div>
 
-            {/* Transitions */}
-            <div className="mb-2 flex items-center gap-3">
-              <h2 className="font-display text-lg font-semibold text-white">Available Actions</h2>
-              <span className="text-xs text-slate-500">{pos.transitions.length} transitions — click to freeze & pivot</span>
+            {/* Notes */}
+            <div className="mb-7">
+              <NotesCard value={notes[currentId]} onChange={(v) => setNote(currentId, v)} />
             </div>
+
+            {/* Transitions */}
+            <div className="mb-2 flex items-center gap-3 flex-wrap">
+              <h2 className="font-display text-lg font-semibold text-white">Available Actions</h2>
+              <span className="text-xs text-slate-500">{pos.transitions.length} transitions — click to freeze & pivot{activePlan ? " · 📌 to set your go-to" : ""}</span>
+            </div>
+            {activePlan && plannedLabel && (
+              <div className="mb-3 flex items-center gap-2 text-sm rounded-xl bg-amber-400/10 border border-amber-400/30 px-3 py-2">
+                <span className="text-amber-300 font-semibold">★ Your A-game here:</span>
+                <span className="text-amber-100">{plannedLabel}</span>
+              </div>
+            )}
             <div className="grid sm:grid-cols-2 gap-3 pb-10">
               {pos.transitions.map((t, i) => (
-                <TransitionCard key={i} t={t} onClick={() => goTo(t.to)} />
+                <TransitionCard key={i} t={t} onClick={() => goTo(t.to)}
+                  planActive={!!activePlan}
+                  planned={!!activePlan && activePlan.picks[currentId] === t.label}
+                  onTogglePlan={() => setPick(currentId, t.label)} />
               ))}
             </div>
           </div>
@@ -1282,6 +1891,13 @@ function App() {
 
       {mapOpen && <MapGraph current={currentId} onClose={() => setMapOpen(false)}
         onPick={(id) => { goTo(id, { viaArchive: true }); setMapOpen(false); }} />}
+
+      {plansOpen && <GamePlanModal
+        plans={plans} activeId={activePlanId} active={activePlan}
+        onCreate={createPlan} onDelete={deletePlan} onSetActive={setActivePlanId}
+        onClearPick={clearPick} onFollow={followPlan}
+        onJump={(id) => { goTo(id, { viaArchive: true }); setPlansOpen(false); }}
+        onClose={() => setPlansOpen(false)} />}
     </div>
   );
 }
