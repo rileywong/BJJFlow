@@ -1009,6 +1009,333 @@ const STYLE_PRESETS = {
 };
 
 //////////////////////////////////////////////////////////////////////////////
+//  TRAINING LAB — position-specific drills, focus & mistakes, play-style plans
+//  ---------------------------------------------------------------------------
+//  Authored from established BJJ pedagogy (positional sparring, the
+//  drill→resist→live progression, constraints-led games, and the standard
+//  position/style systems). Not live web research — coaching knowledge.
+//
+//  drill.type: solo | partner | positional | flow
+//////////////////////////////////////////////////////////////////////////////
+
+const DRILL_TYPES = {
+  solo:       { label: "Solo Drill", icon: "🏃", color: "#38bdf8" },
+  partner:    { label: "Partner Rep", icon: "🤝", color: "#a78bfa" },
+  positional: { label: "Positional Spar", icon: "⏱️", color: "#34d399" },
+  flow:       { label: "Flow", icon: "🌊", color: "#22d3ee" },
+};
+
+const TRAINING = {
+  standing: {
+    focus: "Win grips and change levels before you move. Most hobbyists lose the match on the feet by reaching with a tall, bladed stance — fix your stance and entries first.",
+    drills: [
+      { name: "Penetration-step shots", type: "solo", reps: "3×20", desc: "Shadow level-change + deep penetration step into a knee-tap finish to groove the entry." },
+      { name: "Grip-fighting hand sparring", type: "partner", reps: "3×2 min", desc: "Collar-and-elbow tie-up; fight only for dominant grips — no takedowns, no resets." },
+      { name: "Takedown-only rounds", type: "positional", reps: "4×3 min", desc: "Reset to the feet on any guard pull or finish. Builds chain wrestling under live resistance." },
+      { name: "Pummel for underhooks", type: "partner", reps: "3 min", desc: "Continuous clinch pummeling, sealing a double-under body-lock each cycle." },
+    ],
+    mistakes: ["Tall, bladed, reaching stance", "Shooting without a level change", "Pulling guard out of fear instead of strategy"],
+    concepts: ["Grips → level change → penetrate", "Head position dictates the takedown", "Make the opponent react, then attack the reaction"],
+  },
+  clinch: {
+    focus: "Win the inside position (underhooks / body-lock) and break balance. Whoever controls the inside dictates the takedown.",
+    drills: [
+      { name: "Underhook pummel battle", type: "partner", reps: "3×90s", desc: "Live pummeling, scoring a point for each clean double-under achieved." },
+      { name: "Body-lock trip reps", type: "partner", reps: "3×8/side", desc: "From the body-lock, drill the inside trip and the finish to top." },
+      { name: "Clinch-to-takedown rounds", type: "positional", reps: "4×2 min", desc: "Start tied up; first to a takedown or back-take wins, then reset." },
+    ],
+    mistakes: ["Letting the opponent get the underhook", "Standing square and tall in the clinch", "Forcing a throw without breaking balance first"],
+    concepts: ["Inside position first", "Break balance, then attack", "Chain front/back exposure off the pummel"],
+  },
+  "closed-guard-bottom": {
+    focus: "Break posture, then create an angle — you can't attack a postured, square opponent. Train the break→angle→attack sequence until it's automatic.",
+    drills: [
+      { name: "Hip-up / bridge circuit", type: "solo", reps: "3×20", desc: "Sit-up sweeps and bridges to build the hip drive every closed-guard attack needs." },
+      { name: "Posture-break to angle", type: "partner", reps: "3×10/side", desc: "Break to the elbows, then shrimp to a 45° angle for the armbar/triangle entry." },
+      { name: "Submit-or-sweep vs pass", type: "positional", reps: "4×3 min", desc: "Bottom must sweep or submit; top must open and pass. Reset on score." },
+      { name: "Triangle entry chain", type: "partner", reps: "3×10", desc: "From broken posture, isolate the arm and lock the figure-four; flow to armbar if defended." },
+    ],
+    mistakes: ["Flat hips, ankles locked, no angle", "Holding the opponent tight without attacking", "Opening the guard with no follow-up"],
+    concepts: ["Break posture → angle → attack", "Attack in chains (sweep ↔ submission)", "Elbows in, head off the mat"],
+  },
+  "closed-guard-top": {
+    focus: "Posture, control the hips, and open on YOUR terms. Never get broken down. The pass starts the instant the legs open — have a committed plan.",
+    drills: [
+      { name: "Posture-up isometrics", type: "partner", reps: "3×30s", desc: "Maintain tall posture while partner tries to break you down; builds the position." },
+      { name: "Stand-up & knee-cut entry", type: "partner", reps: "3×8/side", desc: "Open standing, drop the knee through, settle into side control." },
+      { name: "Open-and-pass rounds", type: "positional", reps: "4×3 min", desc: "Top must open and pass; bottom defends. Reset when the guard is passed or swept." },
+    ],
+    mistakes: ["Letting posture get broken to the elbows", "Opening the guard without committing to a pass", "Hands on the mat inside the guard"],
+    concepts: ["Posture is survival", "Control hips before opening", "Commit fully once the legs open"],
+  },
+  "dlr-bottom": {
+    focus: "Off-balance through the hook and chain your sweep with the back-take. The DLR hook is a steering wheel — drill loading weight onto the far leg.",
+    drills: [
+      { name: "Berimbolo entry reps", type: "solo", reps: "3×8/side", desc: "Invert under the hips and rotate through to a back-exposed finish." },
+      { name: "DLR off-balance + sweep", type: "partner", reps: "3×10/side", desc: "Extend the hook, break the post, and come up on top." },
+      { name: "Keep-DLR-vs-pass rounds", type: "positional", reps: "4×2 min", desc: "Bottom keeps the hook and threatens; top tries to clear and pass." },
+    ],
+    mistakes: ["Weak heel/sleeve grips", "Flat back instead of an active hook", "No back-take threat off the sweep"],
+    concepts: ["Hook + grips = steering", "Sweep and back-take are the same motion", "Load the far leg to off-balance"],
+  },
+  "spider-bottom": {
+    focus: "Leg tension + sleeve control. Spider is a distance-management game — keep constant pressure into the biceps and never let your grips get stripped.",
+    drills: [
+      { name: "Leg-extension tension holds", type: "partner", reps: "3×30s", desc: "Maintain pushing tension on the biceps while partner tries to pass — builds the spider engine." },
+      { name: "Tripod/sickle sweep reps", type: "partner", reps: "3×10/side", desc: "One foot to the hip, hook the heel, topple and come up." },
+      { name: "Spider retention rounds", type: "positional", reps: "4×2 min", desc: "Bottom keeps spider & sweeps; top strips grips and passes." },
+    ],
+    mistakes: ["Letting the legs collapse (no tension)", "Losing the sleeve grips", "No transition when one grip is broken"],
+    concepts: ["Constant leg tension", "Grips before legs", "Chain to lasso/triangle when stripped"],
+  },
+  "butterfly-bottom": {
+    focus: "Win the underhook and load the opponent onto your hooks. Butterfly is about elevation — drill the off-balance and the come-up together.",
+    drills: [
+      { name: "Hook-elevation drill", type: "partner", reps: "3×10/side", desc: "Underhook, fall to the side, and elevate the partner with the hook." },
+      { name: "Arm-drag to back reps", type: "partner", reps: "3×10/side", desc: "Two-on-one drag past the arm and climb to the back." },
+      { name: "Seated-guard rounds", type: "positional", reps: "4×2 min", desc: "Bottom sweeps/back-takes; top flattens and passes. Reset on score." },
+    ],
+    mistakes: ["Getting flattened (chest down)", "No underhook or body-lock", "Lifting with the back, not the hook + sweep angle"],
+    concepts: ["Underhook = sweep", "Elevate, don't muscle", "Arm-drag is always available"],
+  },
+  "half-bottom": {
+    focus: "Win the underhook and get to your side — half guard is a comeback position, not a defensive one. Flat-on-your-back half guard gets passed.",
+    drills: [
+      { name: "Get-to-your-side reps", type: "solo", reps: "3×20", desc: "From flattened, drill framing and shrimping onto your side with the knee-shield." },
+      { name: "Underhook come-up", type: "partner", reps: "3×8/side", desc: "Win the underhook, come up to the dogfight, and take the back or sweep." },
+      { name: "Underhook-battle rounds", type: "positional", reps: "4×2 min", desc: "Both fight for the underhook from half guard; winner advances." },
+    ],
+    mistakes: ["Lying flat on your back", "Losing the underhook fight", "No knee-shield to manage distance"],
+    concepts: ["Underhook + on your side = offense", "Come up, don't stay down", "Knee-shield manages the cross-face"],
+  },
+  "half-top": {
+    focus: "Cross-face + far underhook (the Gable grip) flattens and kills the underhook. Win the upper body, then free the leg.",
+    drills: [
+      { name: "Cross-face pressure holds", type: "partner", reps: "3×30s", desc: "Maintain cross-face + underhook while partner fights to their side." },
+      { name: "Knee-cut free reps", type: "partner", reps: "3×8/side", desc: "Free the trapped knee and settle into side control." },
+      { name: "Flatten-and-pass rounds", type: "positional", reps: "4×2 min", desc: "Top flattens & passes; bottom recovers the underhook." },
+    ],
+    mistakes: ["Losing the cross-face", "Letting the bottom get to their side", "Yanking the leg free without upper-body control"],
+    concepts: ["Win the upper body first", "Cross-face kills the underhook", "Free the leg last"],
+  },
+  "side-top": {
+    focus: "Connection and weight, not muscle. Kill the near elbow and far underhook so they can't frame, then advance — don't rush the submission.",
+    drills: [
+      { name: "Heavy-hips maintenance", type: "positional", reps: "3×90s", desc: "Stay chest-to-chest while partner tries every escape; you only maintain." },
+      { name: "Mount/back transition reps", type: "partner", reps: "3×8/side", desc: "Drill knee-slide to mount and the gift-wrap back-take." },
+      { name: "Pin-vs-escape rounds", type: "positional", reps: "4×2 min", desc: "Top holds & advances; bottom escapes or recovers guard." },
+    ],
+    mistakes: ["Floating high (no chest connection)", "Letting the near elbow get inside", "Forcing submissions and losing the pin"],
+    concepts: ["Weight is a skill", "Kill the frames before advancing", "Position before submission"],
+  },
+  "side-bottom": {
+    focus: "Frame and create space immediately — every second under the pin makes escape harder. Get the elbow inside and shrimp before they advance.",
+    drills: [
+      { name: "Shrimp-to-recover circuit", type: "solo", reps: "3×30s", desc: "Frame, bridge, shrimp, and insert the knee to recover guard." },
+      { name: "Bridge-and-underhook reps", type: "partner", reps: "3×8/side", desc: "Bridge into space, win the underhook, and come up to turtle/knees." },
+      { name: "Escape-only rounds", type: "positional", reps: "4×2 min", desc: "Bottom must escape or recover guard; top maintains. Reset on escape." },
+    ],
+    mistakes: ["Pushing flat with arms (gets armbarred)", "Waiting passively under pressure", "Bridging without an underhook or frame"],
+    concepts: ["Frames create space", "Move early, not when crushed", "Bridge into the space, shrimp out"],
+  },
+  "mount-top": {
+    focus: "Climb high and isolate an arm. Low, flat mount gets bridged off — knees in the armpits, posture up, and attack the upper body.",
+    drills: [
+      { name: "Stay-mounted (grapevines/high)", type: "positional", reps: "3×60s", desc: "Maintain mount while partner bridges and shrimps; you only stay on." },
+      { name: "S-mount armbar reps", type: "partner", reps: "3×8/side", desc: "Climb to S-mount, isolate the arm, and finish the armbar." },
+      { name: "Hold-mount rounds", type: "positional", reps: "4×2 min", desc: "Top keeps mount & attacks; bottom escapes. Reset on escape or sub." },
+    ],
+    mistakes: ["Sitting low and flat", "Posting hands the bottom can trap (upa)", "Reaching for subs and losing the mount"],
+    concepts: ["Climb to the armpits", "Stay over the hips", "Trap the arm before the finish"],
+  },
+  "mount-bottom": {
+    focus: "Protect the neck, trap an arm + leg, and bridge hard (upa). Never let them climb to high mount or isolate an arm.",
+    drills: [
+      { name: "Upa bridge reps", type: "solo", reps: "3×20", desc: "Explosive hip bridge over the shoulder, trapping arm + leg." },
+      { name: "Trap-and-bridge to guard", type: "partner", reps: "3×8/side", desc: "Trap arm/leg, upa to top in their guard, or elbow-knee to half guard." },
+      { name: "Mount-escape rounds", type: "positional", reps: "4×2 min", desc: "Bottom escapes; top maintains. Reset on escape." },
+    ],
+    mistakes: ["Pushing the hips up with hands (armbar bait)", "Letting them climb to high mount", "Bridging without trapping the same-side arm + leg"],
+    concepts: ["Hands defend the neck, not press the chest", "Trap before you bridge", "Stop the climb early"],
+  },
+  "back-attacker": {
+    focus: "Stay glued chest-to-back and win the hand-fight before chasing the choke. Maintenance first — most back finishes are lost by over-reaching.",
+    drills: [
+      { name: "Seatbelt + hooks maintenance", type: "positional", reps: "3×60s", desc: "Keep the chest sealed and hooks/body-triangle in while partner escapes." },
+      { name: "Hand-fight to RNC", type: "partner", reps: "3×10/side", desc: "Win the wrist, slide under the chin, and finish the rear naked choke." },
+      { name: "Keep-the-back rounds", type: "positional", reps: "4×2 min", desc: "Attacker holds & finishes; defender escapes. Reset on escape or tap." },
+    ],
+    mistakes: ["Over-reaching for the choke and losing the seatbelt", "No chest connection", "Crossing the feet (footlock bait)"],
+    concepts: ["Stay connected before attacking", "Win the hand-fight first", "Follow the turn, don't fight it"],
+  },
+  "back-defender": {
+    focus: "Two-on-one the choking wrist, tuck the chin, and slide your hips to the mat. Defend the neck first, then clear a hook and escape to the side of the seatbelt.",
+    drills: [
+      { name: "Chin-tuck + wrist-fight", type: "solo", reps: "3×30s", desc: "Drill the defensive shell: chin down, two hands on the choking wrist, shoulders moving toward the mat." },
+      { name: "Hip-to-mat escape reps", type: "partner", reps: "3×8/side", desc: "Clear the bottom hook, slide hips down, and turn in to land in their guard/half." },
+      { name: "Survive-and-escape rounds", type: "positional", reps: "4×2 min", desc: "Defender survives the choke and escapes; attacker finishes. Reset on escape." },
+    ],
+    mistakes: ["Fighting the choke with one hand", "Exposing the neck by turning the wrong way", "Trying to escape before defending the choke"],
+    concepts: ["Neck safety first", "Escape toward the seatbelt's shoulder side", "Hip to the mat, then turn in"],
+  },
+  "turtle-bottom": {
+    focus: "Stay tight and act fast — turtle is a transient scramble, not a hiding spot. Granby, sit-out, or stand before the back is taken.",
+    drills: [
+      { name: "Granby roll circuit", type: "solo", reps: "3×16", desc: "Shoulder-roll both directions to recover guard from the turtle." },
+      { name: "Sit-out & re-stand reps", type: "solo", reps: "3×16", desc: "Swing the leg through, sit out, and return to standing." },
+      { name: "Escape-the-turtle rounds", type: "positional", reps: "4×2 min", desc: "Bottom re-guards or stands; top attacks the back/breakdown." },
+    ],
+    mistakes: ["Staying turtled and stalling", "Loose elbows/knees (gets broken down)", "Letting hooks get inserted"],
+    concepts: ["Turtle is a verb, not a hideout", "Tight elbows + knees", "Move before the hooks are in"],
+  },
+  "turtle-top": {
+    focus: "Seatbelt + hooks before the breakdown. Ride the hips, stay heavy on the back, and convert to the back or a front-headlock finish.",
+    drills: [
+      { name: "Seatbelt riding", type: "positional", reps: "3×60s", desc: "Stay chest-on-back with a seatbelt while partner moves to escape." },
+      { name: "Hook-insertion reps", type: "partner", reps: "3×8/side", desc: "Drop a hook in, break the turtle down, and lock back control." },
+      { name: "Attack-the-turtle rounds", type: "positional", reps: "4×2 min", desc: "Top takes the back or breaks down; bottom escapes. Reset on score." },
+    ],
+    mistakes: ["No seatbelt before attacking hooks", "Floating off the back", "Crossing feet when hooks go in"],
+    concepts: ["Seatbelt first, then hooks", "Stay heavy on the spine", "Spin to front-headlock if they roll"],
+  },
+  ashi: {
+    focus: "Control the knee line and hide nothing about your own foot exposure — finish from control, never from a scramble. Position before submission applies double to legs.",
+    drills: [
+      { name: "Ashi entry & control hold", type: "partner", reps: "3×8/side", desc: "Enter single-leg-X, kill the rotation, and hold the controlling position (no finish)." },
+      { name: "Heel-exposure mechanics", type: "partner", reps: "3×8/side", desc: "Slow, controlled heel exposure with an immediate tap — protect the partner's knee." },
+      { name: "Inside-position battle", type: "positional", reps: "4×2 min", desc: "Both fight for the inside leg position; control only, no cranking." },
+    ],
+    mistakes: ["Cranking before control", "Losing the knee-line control", "Spazzy finishes that injure partners"],
+    concepts: ["Knee line is king", "Control → expose → finish slowly", "Tap early, every time"],
+    safetyNote: "Leg locks injure the unaware. Drill control, communicate, and tap to pressure long before pain.",
+  },
+  saddle: {
+    focus: "The saddle (inside sankaku) is about controlling the trapped knee and beating the opponent's escape spin. Win the position; the heel hook is a formality.",
+    drills: [
+      { name: "Saddle control vs spin-out", type: "positional", reps: "4×90s", desc: "Top must escape by spinning to the inside; bottom keeps the saddle. Control only." },
+      { name: "Heel-exposure (controlled)", type: "partner", reps: "3×8/side", desc: "Expose the inside heel slowly with the rotation cue and an immediate tap." },
+      { name: "Ashi ⇄ saddle transitions", type: "partner", reps: "3×8/side", desc: "Pummel the inside leg through between ashi and the saddle." },
+    ],
+    mistakes: ["Reaching for the heel before pinning the knee", "Letting the opponent free the foot and spin", "No exit when the position is lost"],
+    concepts: ["Pin the knee line first", "Beat the spin, then attack", "Control is the submission"],
+    safetyNote: "Inside heel hooks are fast and dangerous. Apply rotation slowly and respect early taps.",
+  },
+  "fifty-fifty": {
+    focus: "Symmetrical means whoever gets the inside heel and off-balance first wins. Drill the grip/inside-position race and a clean exit if you lose it.",
+    drills: [
+      { name: "Inside-position race", type: "positional", reps: "4×60s", desc: "From mirrored 50/50, race to win the inside heel position — control only." },
+      { name: "Off-balance sweep reps", type: "partner", reps: "3×8/side", desc: "Elevate and come up on top from 50/50." },
+      { name: "Disengage & stand drill", type: "partner", reps: "3×8", desc: "Practice cleanly standing out of 50/50 when you can't win the inside." },
+    ],
+    mistakes: ["Stalling in a neutral entanglement", "Losing the inside-heel race", "No exit plan"],
+    concepts: ["Win the inside line first", "Sweep or stand — don't stall", "Symmetry rewards speed of control"],
+    safetyNote: "Heel hooks are legal only in some rulesets — know yours, and tap early in training.",
+  },
+  "kob-top": {
+    focus: "Stay light and mobile on the knee, ride the bridges, and convert pressure into mount, the back, or a far-side attack. Knee-on-belly punishes movement.",
+    drills: [
+      { name: "KOB balance riding", type: "positional", reps: "3×45s", desc: "Maintain knee-on-belly while partner bridges and turns; ride and re-settle." },
+      { name: "Spin-to-mount reps", type: "partner", reps: "3×8/side", desc: "Step over to mount or switch to the far KOB as the partner reacts." },
+      { name: "KOB-vs-escape rounds", type: "positional", reps: "4×90s", desc: "Top keeps/advances KOB; bottom recovers guard or turtles." },
+    ],
+    mistakes: ["Dropping all weight (loses mobility)", "Posting the far knee down too early", "Ignoring the bridge and getting bumped off"],
+    concepts: ["Light knee, heavy intent", "Ride the bridge, don't resist it", "KOB is a launchpad, not a resting spot"],
+  },
+  "front-headlock": {
+    focus: "Keep the head below the hips and chain the guillotine/D'Arce with the go-behind. The front headlock is the wrestler's submission hub.",
+    drills: [
+      { name: "Snap-down to front headlock", type: "partner", reps: "3×10", desc: "Snap the head down and lock the chin-strap + tricep control." },
+      { name: "Guillotine ⇄ go-behind", type: "partner", reps: "3×8/side", desc: "Threaten the guillotine; when defended, shuck to the back." },
+      { name: "Front-headlock scramble rounds", type: "positional", reps: "4×90s", desc: "Top finishes or takes the back; bottom stands up or shoots. Reset on score." },
+    ],
+    mistakes: ["Letting the head get above the hips", "Only hunting the choke (no back-take)", "Loose elbow on the guillotine"],
+    concepts: ["Head below hips", "Choke and back-take threaten each other", "Heavy on the neck"],
+  },
+};
+
+// Fall back to a sensible generated plan for positions without explicit data.
+function trainingFor(id) {
+  if (TRAINING[id]) return TRAINING[id];
+  const p = POSITIONS[id];
+  const persp = p.perspective;
+  const solo = persp === "bottom"
+    ? { name: "Shrimp, bridge & recover circuit", type: "solo", reps: "3×30s", desc: "Hip escapes, bridges, and guard recoveries — the movements this bottom position depends on." }
+    : persp === "top"
+    ? { name: "Base & weight-distribution flow", type: "solo", reps: "3×30s", desc: "Sprawls, knee-slides, and base shifts to keep your hips heavy and connected on top." }
+    : { name: "Standing movement warm-up", type: "solo", reps: "3×30s", desc: "Penetration steps, sprawls, and stance switches to sharpen your base." };
+  const primary = p.transitions.find(t => t.kind !== "escape") || p.transitions[0];
+  const pl = primary ? primary.label : "your main attack";
+  return {
+    focus: `Pick your highest-percentage option here — ${pl} — and over-invest in it until it's reflexive, then pressure-test it in positional sparring.`,
+    drills: [
+      solo,
+      { name: `Isolate "${pl}"`, type: "partner", reps: "3×10/side", desc: `Rep the entry and finish of ${pl.toLowerCase()} with a compliant, then progressively-resisting, partner.` },
+      { name: `${p.name} positional rounds`, type: "positional", reps: "4×2–3 min", desc: `Start every round here; ${persp === "top" ? "top consolidates & advances" : persp === "bottom" ? "bottom escapes or attacks" : "both fight for the dominant entry"}. Reset on score.` },
+    ],
+    mistakes: ["Drilling with zero resistance, so it never transfers to rolling", "No clear first objective from the position", "Skipping positional sparring — the rep that actually builds timing"],
+    concepts: ["Choose one A-game option and drill it relentlessly", "Drill → resist → positional spar → live roll", "Track what fails and feed it back into drilling"],
+  };
+}
+
+const PLAYSTYLE_TRAINING = {
+  "Pressure Passer": {
+    attributes: ["Hip & leg-flexor endurance for sustained pressure", "Grip endurance", "Forward-pressure cardio (zone-2 base)", "Cross-face / shoulder-pressure strength"],
+    tools: ["Specific passing rounds — start in HQ or inside the guard, only objective is to pass", "Smash-pass drilling on a larger, heavier partner", "Isometric pin holds (side control & mount for time)", "Hill/stair sprints + zone-2 for the gas tank", "Gi grip work: pull-ups, towel/gi hangs"],
+    drills: ["HQ pass-the-guard rounds (4×3 min)", "Side-control & mount maintenance vs escape (3×90s, stay on top)", "Knee-cut entry reps 3×10/side"],
+    study: "Pressure-passing & body-lock systems (Faria, Gordon-style over-under). Watch how they kill the hips before stepping — pressure, not speed.",
+    keyPositions: ["hq-top", "closed-guard-top", "half-top", "side-top", "mount-top"],
+  },
+  "Berimbolo / Back-Take": {
+    attributes: ["Hip mobility & inversion comfort", "Neck/spinal conditioning for inversions", "Grip endurance", "Core & anti-rotation strength"],
+    tools: ["Daily inversion & granby drilling", "DLR/RDLR entry reps off a standing partner", "Keep/recover-guard-vs-passer specific rounds", "Mobility: hip CARs, jefferson curls, careful neck bridging", "Solo berimbolo & leg-pummel flows"],
+    drills: ["Berimbolo entry reps 3×8/side", "Recover-guard-vs-pass rounds (bottom, 4×2 min)", "Standing-to-DLR connection drill 3×8"],
+    study: "Mendes bros & Mikey Musumeci — guard retention and back-take detail. Live on the hooks, not flat.",
+    keyPositions: ["dlr-bottom", "rdlr-bottom", "closed-guard-bottom", "spider-bottom", "back-attacker"],
+  },
+  "Leg Locker": {
+    attributes: ["Hip mobility for entanglements", "Knee/ankle tendon tolerance (build slowly)", "Inversion & rolling comfort", "Control endurance in ashi/saddle"],
+    tools: ["Entanglement entry reps — control the position before any finish", "Position-only leg rounds (establish & hold the inside position, no submitting)", "Solo leg-pummel & inside-sankaku entries", "Mobility for hips & ankles", "Strict tap-early culture to protect knees"],
+    drills: ["Ashi → saddle transition reps 3×8/side", "50/50 inside-position battles (control-only, 4×2 min)", "K-guard entry off a passer 3×8"],
+    study: "Danaher / B-Team leg-lock systems — the emphasis is the control sequence, not the crank.",
+    keyPositions: ["ashi", "saddle", "fifty-fifty", "kguard-bottom", "truck"],
+    safetyNote: "Leg locks injure the unaware. Drill control, communicate clearly, and tap to pressure long before pain — your partners are not disposable.",
+  },
+  "Wrestler / Top": {
+    attributes: ["Explosive level-change & drive", "Anaerobic scramble conditioning", "Neck & grip strength", "Sprawl / hip-heaviness"],
+    tools: ["Takedown-only rounds (reset on pull or finish)", "Daily wall-shot & penetration-step drilling", "Front-headlock & sprawl scramble rounds", "Sled pushes, sprints, explosive lower-body lifts", "Live go-behind / back-exposure scrambles"],
+    drills: ["Penetration-step shots 5×10", "Sprawl-to-go-behind reps 3×10", "Front-headlock-to-back rounds (positional, 4×90s)"],
+    study: "Folkstyle wrestling + chain-wrestling for grappling (Cejudo-style). Relentless level changes and re-attacks.",
+    keyPositions: ["standing", "clinch", "front-headlock", "turtle-top", "crucifix"],
+  },
+  "Submission Hunter": {
+    attributes: ["Grip & forearm endurance", "Flexibility (triangles/armbars)", "Transitional timing", "Patience and composure in scrambles"],
+    tools: ["Submission-chain drilling (armbar ↔ triangle ↔ omoplata)", "Catch-and-release rounds: hunt the sub, release at the finish, keep flowing", "Grip & flexibility work", "Flow rolling to chain attacks", "Specific 'attack from X' rounds"],
+    drills: ["Armbar–triangle–omoplata chain 3×8/side", "Mount attack rounds (top must submit) 4×2 min", "RNC finishing mechanics 3×10"],
+    study: "Marcelo Garcia & Lachlan Giles flows — the 'always attacking', threat-chaining mindset.",
+    keyPositions: ["closed-guard-bottom", "mount-top", "back-attacker", "spider-bottom", "side-top"],
+  },
+  "Modern Half-Guard": {
+    attributes: ["Underhook-fight strength", "Hip mobility to get to your side", "Grip endurance", "Core for elevation sweeps"],
+    tools: ["Underhook-battle rounds from half guard", "Deep-half entry & waiter-sweep reps", "Come-up-to-the-back drilling", "Specific 'sweep vs flatten' half-guard rounds", "Mobility for getting onto your side"],
+    drills: ["Underhook come-up reps 3×8/side", "Deep-half waiter sweep 3×8/side", "Half-guard sweep-vs-pass rounds 4×2 min"],
+    study: "Bernardo Faria deep-half & Lucas Leite half-guard systems — patient underhook battles into the come-up.",
+    keyPositions: ["half-bottom", "deep-half-bottom", "closed-guard-bottom", "back-attacker"],
+  },
+};
+
+const METHODS = [
+  { name: "Positional Sparring", icon: "⏱️", desc: "Start every round in a set position and reset on score/escape. The single highest-ROI tool — it isolates one problem under real resistance, the way a roll never can." },
+  { name: "Specific / Situational Rounds", icon: "🎯", desc: "Constrain the objective ('pass only', 'recover guard only', 'control without finishing'). Forces dense reps of the exact skill you're building." },
+  { name: "Drilling (rep-based)", icon: "🔁", desc: "Compliant → progressively-resisting reps to groove mechanics. Add resistance in stages; staying 100% compliant means it never transfers to rolling." },
+  { name: "Ecological / Constraints-Led", icon: "🧩", desc: "Learn through games and constraints ('win the underhook', 'get to your side') instead of rote steps. Builds adaptable, live-applicable skill faster for most people." },
+  { name: "Flow Rolling", icon: "🌊", desc: "Light, continuous, low-resistance rolling to chain transitions and widen your map of options. Best for movement, creativity, and recovery days." },
+  { name: "Solo Movement Drills", icon: "🏃", desc: "Shrimps, bridges, technical stand-ups, granby rolls, inversions — the athletic alphabet your techniques are spelled with. 10 min daily compounds fast." },
+  { name: "Strength & Conditioning", icon: "🏋️", desc: "Grip endurance, posterior-chain strength, and a zone-2 gas tank. Conditioning is what lets your technique survive into the 4th and 5th rounds." },
+  { name: "Mobility & Prehab", icon: "🧘", desc: "Hips, neck, knees, ankles. Vital for guard players and leg-lockers especially — it protects you from the very positions you live in." },
+  { name: "Video Review & Journaling", icon: "📓", desc: "Film rounds, note what failed, and turn it into next session's drilling focus. Closing this feedback loop is what most people skip — and why they plateau." },
+];
+
+//////////////////////////////////////////////////////////////////////////////
 //  RULESETS — legality of techniques by competition format
 //  ---------------------------------------------------------------------------
 //  illegalSubs : submission position ids banned in this ruleset
@@ -2072,6 +2399,170 @@ function DashboardModal({ learned, favorites, savedFlows, plans, activePlan, dri
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//  TRAINING LAB — drills, focus, play-style plans, methods
+//////////////////////////////////////////////////////////////////////////////
+
+function DrillRow({ d }) {
+  const m = DRILL_TYPES[d.type] || DRILL_TYPES.partner;
+  return (
+    <div className="rounded-xl bg-ink-800/60 ring-1 ring-white/5 p-3">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: m.color }}>{m.icon} {m.label}</span>
+        <span className="ml-auto text-[10px] text-slate-500 font-mono">{d.reps}</span>
+      </div>
+      <div className="text-sm font-semibold text-slate-100">{d.name}</div>
+      <div className="text-xs text-slate-400 mt-1 leading-relaxed">{d.desc}</div>
+    </div>
+  );
+}
+
+function TrainingCard({ id, onOpen }) {
+  const tr = trainingFor(id);
+  return (
+    <div className="rounded-2xl glass ring-1 ring-white/5 p-4 bg-gradient-to-br from-rose-500/10 to-transparent">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-base">🥋</span>
+        <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">How to Get Better Here</h3>
+        <button onClick={onOpen} className="ml-auto text-[11px] px-2.5 py-1 rounded-md bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/30 transition">Open Training Lab →</button>
+      </div>
+      <p className="text-sm text-slate-300 leading-relaxed mb-3">{tr.focus}</p>
+      <div className="grid sm:grid-cols-2 gap-2">
+        {tr.drills.slice(0, 2).map((d, i) => <DrillRow key={i} d={d} />)}
+      </div>
+    </div>
+  );
+}
+
+function TrainingModal({ currentId, defaultStyle, onJump, onClose }) {
+  const [tab, setTab] = React.useState("position");
+  const styleKeys = Object.keys(PLAYSTYLE_TRAINING);
+  const [style, setStyle] = React.useState(defaultStyle && PLAYSTYLE_TRAINING[defaultStyle] ? defaultStyle : styleKeys[0]);
+  const tr = trainingFor(currentId);
+  const pos = POSITIONS[currentId];
+  const ps = PLAYSTYLE_TRAINING[style];
+
+  const tabBtn = (id, label) => (
+    <button onClick={() => setTab(id)}
+      className={`text-sm px-3.5 py-1.5 rounded-lg transition ${tab === id ? "bg-rose-500/25 text-rose-100 ring-1 ring-rose-400/40" : "bg-ink-700 text-slate-400 hover:bg-ink-600"}`}>
+      {label}
+    </button>
+  );
+  const TwoCol = ({ mistakes, concepts }) => (
+    <div className="grid sm:grid-cols-2 gap-4">
+      <div className="rounded-2xl glass ring-1 ring-white/5 p-4">
+        <h4 className="text-[11px] font-bold uppercase tracking-widest text-rose-300/80 mb-2">⚠ Common Mistakes</h4>
+        <ul className="space-y-1.5">{mistakes.map((m, i) => <li key={i} className="text-sm text-slate-300 flex gap-2"><span className="text-rose-400">•</span>{m}</li>)}</ul>
+      </div>
+      <div className="rounded-2xl glass ring-1 ring-white/5 p-4">
+        <h4 className="text-[11px] font-bold uppercase tracking-widest text-emerald-300/80 mb-2">✓ Key Concepts</h4>
+        <ul className="space-y-1.5">{concepts.map((c, i) => <li key={i} className="text-sm text-slate-300 flex gap-2"><span className="text-emerald-400">•</span>{c}</li>)}</ul>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink-950/85 backdrop-blur-sm">
+      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3 flex-wrap">
+        <span className="text-lg">🥋</span>
+        <h2 className="font-display font-semibold text-white">Training Lab</h2>
+        <div className="flex items-center gap-1 ml-2">
+          {tabBtn("position", "This Position")}
+          {tabBtn("style", "By Play Style")}
+          {tabBtn("methods", "Methods & Tools")}
+        </div>
+        <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+          {tab === "position" && (
+            <>
+              <div className="flex items-center gap-3 flex-wrap">
+                <RatingPip rating={pos.rating} />
+                <h3 className="font-display text-2xl font-bold text-white">{pos.name}</h3>
+                <span className="text-xs text-slate-500">{pos.group}</span>
+              </div>
+              <div className="rounded-2xl glass ring-1 ring-white/5 p-4 bg-gradient-to-br from-rose-500/10 to-transparent">
+                <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-1">Focus — how to get better here</div>
+                <p className="text-slate-200 leading-relaxed">{tr.focus}</p>
+              </div>
+              {tr.safetyNote && <div className="rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-200 text-sm px-4 py-2.5">🛡️ {tr.safetyNote}</div>}
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Drills &amp; Rounds</h4>
+                <div className="grid sm:grid-cols-2 gap-3">{tr.drills.map((d, i) => <DrillRow key={i} d={d} />)}</div>
+              </div>
+              <TwoCol mistakes={tr.mistakes} concepts={tr.concepts} />
+            </>
+          )}
+
+          {tab === "style" && (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                {styleKeys.map(k => (
+                  <button key={k} onClick={() => setStyle(k)}
+                    className={`text-xs px-3 py-1.5 rounded-lg transition ${style === k ? "bg-indigo-500/25 text-indigo-100 ring-1 ring-indigo-400/40" : "bg-ink-700 text-slate-400 hover:bg-ink-600"}`}>
+                    {STYLE_PRESETS[k]?.emoji || "🥋"} {k}
+                  </button>
+                ))}
+              </div>
+              <p className="text-sm text-slate-400">{STYLE_PRESETS[style]?.blurb}</p>
+              {ps.safetyNote && <div className="rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-200 text-sm px-4 py-2.5">🛡️ {ps.safetyNote}</div>}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="rounded-2xl glass ring-1 ring-white/5 p-4">
+                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-sky-300/80 mb-2">🏋️ Attributes to Build</h4>
+                  <ul className="space-y-1.5">{ps.attributes.map((a, i) => <li key={i} className="text-sm text-slate-300 flex gap-2"><span className="text-sky-400">•</span>{a}</li>)}</ul>
+                </div>
+                <div className="rounded-2xl glass ring-1 ring-white/5 p-4">
+                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-violet-300/80 mb-2">🛠️ Tools &amp; Methods</h4>
+                  <ul className="space-y-1.5">{ps.tools.map((t, i) => <li key={i} className="text-sm text-slate-300 flex gap-2"><span className="text-violet-400">•</span>{t}</li>)}</ul>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Signature Drills</h4>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {ps.drills.map((d, i) => (
+                    <div key={i} className="rounded-xl bg-ink-800/60 ring-1 ring-white/5 p-3 text-sm text-slate-200">{d}</div>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-2xl glass ring-1 ring-white/5 p-4">
+                <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">📺 What to Study</h4>
+                <p className="text-sm text-slate-300 leading-relaxed">{ps.study}</p>
+              </div>
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Key Positions to Live In</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {ps.keyPositions.map(id => POSITIONS[id] && (
+                    <button key={id} onClick={() => onJump(id)}
+                      className="text-xs px-2.5 py-1.5 rounded-full bg-ink-700 hover:bg-ink-600 text-slate-200 border border-white/5 transition flex items-center gap-1.5">
+                      <span style={{ color: ratingColor(POSITIONS[id].rating) }}>●</span>{POSITIONS[id].name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {tab === "methods" && (
+            <>
+              <p className="text-sm text-slate-400">The training tools themselves — how to actually practice so it transfers to live rolling.</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {METHODS.map((m, i) => (
+                  <div key={i} className="rounded-2xl glass ring-1 ring-white/5 p-4">
+                    <div className="flex items-center gap-2 mb-1.5"><span className="text-base">{m.icon}</span><h4 className="font-semibold text-slate-100">{m.name}</h4></div>
+                    <p className="text-sm text-slate-400 leading-relaxed">{m.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //  MAIN APP
 //////////////////////////////////////////////////////////////////////////////
 
@@ -2091,6 +2582,7 @@ function App() {
   const [cmdkOpen, setCmdkOpen] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [dashOpen, setDashOpen] = React.useState(false);
+  const [trainOpen, setTrainOpen] = React.useState(false);
   const [ruleset, setRuleset] = useLocalStorage("bjjflow:ruleset", "Open Mat (all legal)");
   const [learned, setLearned] = useLocalStorage("bjjflow:learned", []);
   const [settings, setSettings] = useLocalStorage("bjjflow:settings", { colorblind: false, reduceMotion: false, showPoints: true });
@@ -2227,10 +2719,10 @@ function App() {
     const onKey = (e) => {
       const tag = (e.target.tagName || "").toLowerCase();
       const typing = tag === "input" || tag === "textarea" || e.target.isContentEditable;
-      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen;
+      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen;
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setCmdkOpen(v => !v); return; }
       if (typing) return;
-      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); return; }
+      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); return; }
       if (anyModal) return;
       if (/^[1-9]$/.test(e.key)) { const t = pos.transitions[+e.key - 1]; if (t) goTo(t.to); return; }
       switch (e.key.toLowerCase()) {
@@ -2239,6 +2731,7 @@ function App() {
         case "m": setMapOpen(true); break;
         case "p": setPlansOpen(true); break;
         case "d": setDrillOpen(true); break;
+        case "t": setTrainOpen(true); break;
         case "s": setDashOpen(true); break;
         case "?": setDashOpen(true); break;
         case "f": toggleFav(currentId); break;
@@ -2247,7 +2740,7 @@ function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, history]); // eslint-disable-line
+  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, trainOpen, history]); // eslint-disable-line
 
   return (
     <div className={`h-full flex text-slate-200 ${settings.reduceMotion ? "reduce-motion" : ""}`}>
@@ -2291,6 +2784,10 @@ function App() {
             <button onClick={() => toggleFav(currentId)} title="Favorite this position"
               className={`text-sm px-2.5 py-1.5 rounded-lg border transition ${isFav ? "bg-amber-500/20 text-amber-300 border-amber-400/40" : "bg-ink-700 hover:bg-ink-600 text-slate-300 border-white/5"}`}>
               {isFav ? "★" : "☆"}
+            </button>
+            <button onClick={() => setTrainOpen(true)} title="Training Lab — drills & how to improve"
+              className="text-sm px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-400/30 transition">
+              🥋 <span className="hidden sm:inline">Train</span>
             </button>
             <button onClick={() => setDrillOpen(true)} title="Drill & quiz mode"
               className="text-sm px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-400/30 transition">
@@ -2434,6 +2931,11 @@ function App() {
               <InfoCard icon="✊" title="Common Grips & Controls" body={pos.grips} className="sm:col-span-2" accent="amber" />
             </div>
 
+            {/* Training focus */}
+            <div className="mb-5">
+              <TrainingCard id={currentId} onOpen={() => setTrainOpen(true)} />
+            </div>
+
             {/* Notes */}
             <div className="mb-7">
               <NotesCard value={notes[currentId]} onChange={(v) => setNote(currentId, v)} />
@@ -2490,6 +2992,10 @@ function App() {
         plans={plans} activePlan={activePlan} drillAgg={drillAgg}
         onJump={(id) => { goTo(id, { viaArchive: true }); setDashOpen(false); }}
         onClose={() => setDashOpen(false)} />}
+
+      {trainOpen && <TrainingModal currentId={currentId} defaultStyle={activePlan ? activePlan.style : null}
+        onJump={(id) => { goTo(id, { viaArchive: true }); setTrainOpen(false); }}
+        onClose={() => setTrainOpen(false)} />}
     </div>
   );
 }
