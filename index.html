@@ -242,6 +242,7 @@ const POSITIONS = {
       { label: "Berimbolo to the Back", kind: "backtake", detail: "Invert under the hips, rotate through, and come up with both hooks on the back.", to: "back-attacker" },
       { label: "DLR Sweep (Off-Balance)", kind: "sweep", detail: "Extend the hook and pull the sleeve to dump the opponent — come up on top.", to: "side-top" },
       { label: "Transition to Spider Guard", kind: "transition", detail: "Switch feet to the biceps and extend into spider control.", to: "spider-bottom" },
+      { label: "Leg Entry to 50/50", kind: "transition", detail: "Underhook the leg and triangle into a 50/50 entanglement.", to: "fifty-fifty" },
       { label: "Leg-Dragged / Passed", kind: "escape", detail: "Opponent clears the hook with a leg-drag and pins you in side control.", to: "side-bottom" },
     ],
   },
@@ -284,6 +285,7 @@ const POSITIONS = {
       { label: "Butterfly Hook Sweep", kind: "sweep", detail: "Underhook, fall to the side, and elevate with the hook to come up in mount.", to: "mount-top" },
       { label: "Arm Drag to the Back", kind: "backtake", detail: "Two-on-one drag past the arm, slide to the hips, and take the back.", to: "back-attacker" },
       { label: "Sweep to Side Control", kind: "sweep", detail: "Off-balance and follow up on top into side control.", to: "side-top" },
+      { label: "Shin-to-Shin → Ashi Garami", kind: "transition", detail: "Switch to a shin-to-shin grip and enter single-leg-X for the leg game.", to: "ashi" },
       { label: "Flattened & Passed", kind: "escape", detail: "Opponent cross-faces, kills the hooks, and passes to side control.", to: "side-bottom" },
     ],
   },
@@ -523,6 +525,72 @@ const POSITIONS = {
     ],
   },
 
+  /* ------------------------------------------------------ LEG ENTANGLEMENTS */
+  "ashi": {
+    id: "ashi",
+    name: "Ashi Garami (Single Leg X)",
+    group: "Leg Entanglements",
+    rating: 1,
+    layout: "legentangle",
+    perspective: "bottom",
+    summary: "The foundational leg entanglement — one leg trapped, hunting the heel.",
+    alignment: "You are on your back/side with the opponent's leg trapped in a single-leg-X / straight ashi configuration: your knee line controls their leg, both feet managing their hip and knee. The hub of the modern leg game.",
+    top: "Free the trapped foot, clear your knee to the floor, hide the heel, and pass — or pull your leg out and re-stand.",
+    bottom: "Expose and isolate the heel, control the hip to kill the rotation, and finish the ankle lock or heel hook — or use it to sweep and come up on top.",
+    grips: "Single-leg-X hooks on the hip + hamstring, foot-on-hip for ashi, hands on the heel/instep for the finish.",
+    imagePrompt: "bottom athlete in a single-leg-X ashi garami leg entanglement, the opponent's leg trapped across the hips, hands controlling the foot, threatening an ankle lock.",
+    transitions: [
+      { label: "Straight Ankle Lock", kind: "submission", detail: "Trap the foot under the armpit, bridge the hips, and extend the ankle.", to: "sub-straightankle" },
+      { label: "Outside Heel Hook", kind: "submission", detail: "Expose the heel, control the knee line, and rotate for the heel hook.", to: "sub-heelhook" },
+      { label: "Transition to Saddle", kind: "transition", detail: "Pummel the inside leg through to the saddle (inside sankaku / 411).", to: "saddle" },
+      { label: "Ashi Sweep to Top", kind: "sweep", detail: "Off-balance over the entangled leg and come up on top in side control.", to: "side-top" },
+      { label: "Leg Freed & Passed", kind: "escape", detail: "Opponent clears the knee, hides the heel, and passes to side control.", to: "side-bottom" },
+    ],
+  },
+
+  "fifty-fifty": {
+    id: "fifty-fifty",
+    name: "50/50 Guard",
+    group: "Leg Entanglements",
+    rating: 0,
+    layout: "legentangle",
+    perspective: "bottom",
+    summary: "Mirrored leg entanglement — symmetrical, neutral, heel-hook heavy.",
+    alignment: "Both athletes' legs are triangled around each other identically — a symmetrical, neutral entanglement (0). Whoever wins the inside position and heel exposure first dictates the exchange.",
+    top: "Win the inside-heel-hook position, or stand and 'cross-ashi' clear to pass; otherwise disengage safely.",
+    bottom: "Beat the opponent to the heel exposure, off-balance for a sweep, or transition to a more dominant entanglement (saddle).",
+    grips: "Mirrored leg-triangle, near-ankle and far-heel grips, lapel/belt grip for off-balancing.",
+    imagePrompt: "two athletes in a symmetrical 50/50 guard leg entanglement, legs triangled around each other, both reaching for the heel.",
+    transitions: [
+      { label: "Inside Heel Hook", kind: "submission", detail: "Win the inside angle, expose the heel, and rotate to finish.", to: "sub-heelhook" },
+      { label: "Toe Hold", kind: "submission", detail: "Figure-four the foot and rotate the toes for the toe hold.", to: "sub-toehold" },
+      { label: "Transition to Saddle", kind: "transition", detail: "Underhook the leg and roll through into the saddle for the dominant angle.", to: "saddle" },
+      { label: "Off-Balance Sweep to Top", kind: "sweep", detail: "Elevate and come up on top into side control.", to: "side-top" },
+      { label: "Stand & Disengage", kind: "escape", detail: "Stand up, clear the legs, and return to neutral standing.", to: "standing" },
+    ],
+  },
+
+  "saddle": {
+    id: "saddle",
+    name: "Saddle (Inside Sankaku / 411)",
+    group: "Leg Entanglements",
+    rating: 2,
+    layout: "legentangle",
+    perspective: "bottom",
+    summary: "The most dominant leg entanglement — inside position, control the knee line.",
+    alignment: "You have triangled your legs around one of the opponent's, trapping it with the inside-sankaku configuration. A dominant leg-attack position (+2): strong heel-hook and kneebar control with low escape risk.",
+    top: "There is little 'top' here — the trapped athlete must spin to the inside, free the heel, and run to recover.",
+    bottom: "Control the knee line, expose the inside heel, and finish the heel hook or kneebar — or use it to back-take.",
+    grips: "Inside sankaku leg triangle, near-heel + knee-line control, hand on the hip to stop the escape spin.",
+    imagePrompt: "athlete in the saddle inside-sankaku 411 leg entanglement, opponent's leg trapped and triangled by the legs, controlling the knee line for a heel hook.",
+    transitions: [
+      { label: "Inside Heel Hook", kind: "submission", detail: "Expose the inside heel, lock the knee line, and rotate to finish.", to: "sub-heelhook" },
+      { label: "Kneebar", kind: "submission", detail: "Extend the trapped leg and bridge the hips into the knee joint.", to: "sub-kneebar" },
+      { label: "Back Take", kind: "backtake", detail: "Elevate and come up behind the opponent into back control.", to: "back-attacker" },
+      { label: "Opponent Escapes & Passes", kind: "escape", detail: "Opponent spins to the inside, frees the heel, and passes to side control.", to: "side-bottom" },
+    ],
+  },
+
   /* --------------------------------------------------------------- SUBMISSIONS */
   "sub-rnc": subNode("sub-rnc", "Rear Naked Choke", "Mata-leão — choking arm under the chin, second hand behind the head. A blood choke; the match is over.", "attacker finishing a rear naked choke from back control, both hooks in, choking arm under the chin, second hand behind the head, opponent tapping."),
   "sub-armbar": subNode("sub-armbar", "Armbar (Juji-Gatame)", "Hips elevated, the opponent's arm trapped thumb-up between your thighs, hyperextending the elbow.", "attacker finishing a juji-gatame armbar, hips raised, opponent's arm extended thumb-up between the thighs."),
@@ -530,6 +598,10 @@ const POSITIONS = {
   "sub-kimura": subNode("sub-kimura", "Kimura", "Figure-four grip on the wrist, rotating the shoulder behind the back beyond its range.", "attacker finishing a kimura shoulder lock, figure-four grip on the wrist, rotating the opponent's arm behind the back."),
   "sub-collar-choke": subNode("sub-collar-choke", "Collar Choke", "Deep cross-lapel grips, elbows flaring — a strangle finished from mount, back, or guard.", "top athlete finishing a cross-collar choke from mount, both hands deep in the lapels, elbows flaring, opponent tapping."),
   "sub-guillotine": subNode("sub-guillotine", "Guillotine Choke", "Head trapped under the arm, choking forearm under the chin, pulling up with a high elbow.", "attacker finishing a guillotine choke, opponent's head trapped under the armpit, choking arm under the chin, pulling up with a high elbow."),
+  "sub-heelhook": subNode("sub-heelhook", "Heel Hook", "Heel isolated and rotated against a controlled knee line — a fast, powerful rotational attack on the knee.", "attacker finishing a heel hook from a leg entanglement, the opponent's heel trapped and rotated, knee line controlled, opponent tapping fast."),
+  "sub-kneebar": subNode("sub-kneebar", "Kneebar", "The leg extended and the hips bridged into the knee joint, hyperextending it.", "attacker finishing a kneebar, the opponent's leg extended and trapped between the thighs, hips bridging into the knee."),
+  "sub-straightankle": subNode("sub-straightankle", "Straight Ankle Lock", "Foot trapped under the armpit, bridging to extend the ankle (Achilles lock).", "attacker finishing a straight ankle lock, the opponent's foot trapped under the armpit, hips bridged to extend the ankle."),
+  "sub-toehold": subNode("sub-toehold", "Toe Hold", "Figure-four grip on the foot, rotating the toes to torque the ankle and knee.", "attacker finishing a toe hold, figure-four grip on the opponent's foot rotating the ankle."),
 };
 
 // Helper: every submission is a terminal "finish" node that resets to standing.
@@ -549,7 +621,7 @@ function subNode(id, name, desc, imagePrompt) {
 }
 
 // Archive grouping order.
-const GROUP_ORDER = ["Neutral", "Guard", "Half Guard", "Side Control", "Mount", "Back Control", "Turtle", "Submissions"];
+const GROUP_ORDER = ["Neutral", "Guard", "Half Guard", "Side Control", "Mount", "Back Control", "Turtle", "Leg Entanglements", "Submissions"];
 
 // Transition-kind visual metadata.
 const KIND_META = {
@@ -644,6 +716,14 @@ function MatScene({ layout }) {
         {/* bottom curled, top draped over */}
         <Figure x={200} y={150} color={WHITE} accent={WHITE_BELT} rot={90} scale={.8} />
         <Figure x={200} y={120} color={BLUE} accent={BLUE_BELT} rot={20} scale={.92} />
+      </g>
+    ),
+    legentangle: (
+      <g>
+        {/* both seated/reclined, legs tangled at center */}
+        <Figure x={150} y={150} color={BLUE} accent={BLUE_BELT} rot={70} scale={.95} />
+        <Figure x={250} y={150} color={WHITE} accent={WHITE_BELT} rot={-70} scale={.95} />
+        <circle cx={200} cy={150} r={16} fill="rgba(99,102,241,.25)" stroke="rgba(99,102,241,.5)" strokeWidth="1.5" />
       </g>
     ),
     submission: (
@@ -763,14 +843,34 @@ function CopyPrompt({ text }) {
   );
 }
 
-function Archive({ current, query, setQuery, onPick, onClose }) {
+function Archive({ current, query, setQuery, onPick, onClose, favorites = [], onToggleFav, savedFlows = [], onLoadFlow, onDeleteFlow }) {
   const q = query.trim().toLowerCase();
+  const match = (p) => !q || p.name.toLowerCase().includes(q) || p.summary.toLowerCase().includes(q) || p.group.toLowerCase().includes(q);
   const groups = GROUP_ORDER.map(g => ({
     name: g,
-    items: Object.values(POSITIONS).filter(p =>
-      p.group === g && (!q || p.name.toLowerCase().includes(q) || p.summary.toLowerCase().includes(q) || p.group.toLowerCase().includes(q))
-    ),
+    items: Object.values(POSITIONS).filter(p => p.group === g && match(p)),
   })).filter(g => g.items.length);
+  const favItems = favorites.map(id => POSITIONS[id]).filter(p => p && match(p));
+
+  const Row = ({ p }) => {
+    const active = p.id === current;
+    const faved = favorites.includes(p.id);
+    return (
+      <div className={`group/row flex items-center rounded-lg pr-1 transition ${active ? "bg-indigo-500/15 ring-1 ring-indigo-400/40" : "hover:bg-ink-700/60"}`}>
+        <button onClick={() => onPick(p.id)} className="flex-1 min-w-0 text-left px-3 py-2 flex items-center gap-3">
+          <RatingPip rating={p.rating} />
+          <span className="flex-1 min-w-0">
+            <span className={`block text-sm truncate ${active ? "text-white font-semibold" : "text-slate-200"}`}>{p.name}</span>
+            <span className="block text-[11px] text-slate-500 truncate">{p.summary}</span>
+          </span>
+        </button>
+        <button onClick={() => onToggleFav && onToggleFav(p.id)} title="Favorite"
+          className={`shrink-0 px-1.5 text-base transition ${faved ? "text-amber-300" : "text-slate-600 hover:text-slate-300 opacity-0 group-hover/row:opacity-100"}`}>
+          {faved ? "★" : "☆"}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <aside className="flex flex-col h-full">
@@ -796,30 +896,40 @@ function Archive({ current, query, setQuery, onPick, onClose }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-5">
+        {/* Saved flows */}
+        {savedFlows.length > 0 && !q && (
+          <div>
+            <div className="px-2 mb-1.5 text-[11px] font-bold uppercase tracking-widest text-emerald-400/80">💾 Saved Flows</div>
+            <div className="space-y-1">
+              {savedFlows.map(f => (
+                <div key={f.id} className="group/flow flex items-center rounded-lg pr-1 hover:bg-ink-700/60 transition">
+                  <button onClick={() => onLoadFlow && onLoadFlow(f.path)} className="flex-1 min-w-0 text-left px-3 py-2">
+                    <span className="block text-xs text-slate-200 truncate">{f.label}</span>
+                    <span className="block text-[10px] text-slate-500">{f.steps} steps</span>
+                  </button>
+                  <button onClick={() => onDeleteFlow && onDeleteFlow(f.id)} title="Delete"
+                    className="shrink-0 px-2 text-slate-600 hover:text-rose-300 opacity-0 group-hover/flow:opacity-100 transition">✕</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Favorites */}
+        {favItems.length > 0 && (
+          <div>
+            <div className="px-2 mb-1.5 text-[11px] font-bold uppercase tracking-widest text-amber-400/80">★ Favorites</div>
+            <div className="space-y-1">{favItems.map(p => <Row key={"fav-" + p.id} p={p} />)}</div>
+          </div>
+        )}
+
         {groups.length === 0 && (
           <div className="text-center text-slate-500 text-sm py-10">No positions match “{query}”.</div>
         )}
         {groups.map(g => (
           <div key={g.name}>
             <div className="px-2 mb-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500">{g.name}</div>
-            <div className="space-y-1">
-              {g.items.map(p => {
-                const active = p.id === current;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => onPick(p.id)}
-                    className={`w-full text-left rounded-lg px-3 py-2 transition flex items-center gap-3 ${active ? "bg-indigo-500/15 ring-1 ring-indigo-400/40" : "hover:bg-ink-700/60"}`}
-                  >
-                    <RatingPip rating={p.rating} />
-                    <span className="flex-1 min-w-0">
-                      <span className={`block text-sm truncate ${active ? "text-white font-semibold" : "text-slate-200"}`}>{p.name}</span>
-                      <span className="block text-[11px] text-slate-500 truncate">{p.summary}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <div className="space-y-1">{g.items.map(p => <Row key={p.id} p={p} />)}</div>
           </div>
         ))}
       </div>
@@ -872,6 +982,116 @@ function Breadcrumb({ history, onJump }) {
   );
 }
 
+// Shared rating -> color helper (used by gauge, pips, and the map).
+function ratingColor(rating) {
+  if (rating >= 10) return "#fb7185";
+  if (rating > 2)   return "#34d399";
+  if (rating > 0)   return "#86efac";
+  if (rating === 0) return "#fbbf24";
+  if (rating > -3)  return "#fb923c";
+  return "#f87171";
+}
+
+// Persist any JSON-serializable state to localStorage.
+function useLocalStorage(key, initial) {
+  const [val, setVal] = React.useState(() => {
+    try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : initial; }
+    catch (e) { return initial; }
+  });
+  React.useEffect(() => {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+  }, [key, val]);
+  return [val, setVal];
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//  GLOBAL MAP — the whole tree at a glance (tech-tree overview)
+//  Columns = groups, x-ordered; nodes colored by rating; edges = transitions.
+//  Hover a node to spotlight its 1-hop neighborhood; click to navigate.
+//////////////////////////////////////////////////////////////////////////////
+
+function MapGraph({ current, onPick, onClose }) {
+  const [hover, setHover] = React.useState(null);
+  const COLW = 158, X0 = 90, Y0 = 78, ROWH = 66;
+
+  const cols = GROUP_ORDER.map(g => Object.values(POSITIONS).filter(p => p.group === g));
+  const coord = {};
+  cols.forEach((items, ci) => items.forEach((p, ri) => { coord[p.id] = { x: X0 + ci * COLW, y: Y0 + ri * ROWH }; }));
+  const width = X0 + cols.length * COLW;
+  const maxRows = Math.max(...cols.map(c => c.length));
+  const height = Y0 + maxRows * ROWH + 20;
+
+  const edges = [];
+  Object.values(POSITIONS).forEach(p => p.transitions.forEach(t => {
+    if (coord[t.id] && t.id !== p.id) edges.push({ from: p.id, to: t.id });
+  }));
+
+  const focus = hover;
+  const neighbors = new Set();
+  if (focus) {
+    POSITIONS[focus].transitions.forEach(t => neighbors.add(t.id));
+    Object.values(POSITIONS).forEach(p => p.transitions.forEach(t => { if (t.id === focus) neighbors.add(p.id); }));
+    neighbors.add(focus);
+  }
+  const lit = (id) => !focus || neighbors.has(id);
+  const litEdge = (e) => !focus || e.from === focus || e.to === focus;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink-950/80 backdrop-blur-sm">
+      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3">
+        <span className="text-lg">🗺️</span>
+        <h2 className="font-display font-semibold text-white">Flow Map — the whole tree</h2>
+        <span className="hidden sm:block text-xs text-slate-500">hover to spotlight a position's connections · click to jump</span>
+        <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+      </div>
+      <div className="flex-1 overflow-auto p-4">
+        <svg width={width} height={height} className="mx-auto" style={{ minWidth: width }}>
+          {/* group headers */}
+          {GROUP_ORDER.map((g, ci) => (
+            <text key={g} x={X0 + ci * COLW} y={34} textAnchor="middle"
+              className="fill-slate-500" style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase" }}>
+              {g}
+            </text>
+          ))}
+          {/* edges */}
+          {edges.map((e, i) => {
+            const a = coord[e.from], b = coord[e.to];
+            const active = focus && (e.from === focus || e.to === focus);
+            return (
+              <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                stroke={active ? "rgba(129,140,248,.8)" : "rgba(148,163,184,.13)"}
+                strokeWidth={active ? 1.8 : 1}
+                opacity={litEdge(e) ? 1 : 0.15} />
+            );
+          })}
+          {/* nodes */}
+          {Object.values(POSITIONS).map(p => {
+            const c = coord[p.id];
+            const col = ratingColor(p.rating);
+            const isCur = p.id === current;
+            const r = isCur ? 21 : 16;
+            const short = p.name.length > 21 ? p.name.slice(0, 20) + "…" : p.name;
+            return (
+              <g key={p.id} style={{ cursor: "pointer" }} opacity={lit(p.id) ? 1 : 0.2}
+                onMouseEnter={() => setHover(p.id)} onMouseLeave={() => setHover(null)}
+                onClick={() => onPick(p.id)}>
+                {isCur && <circle cx={c.x} cy={c.y} r={r + 5} fill="none" stroke={col} strokeWidth="1.5" opacity=".5" />}
+                <circle cx={c.x} cy={c.y} r={r} fill={col + "26"} stroke={col} strokeWidth={isCur ? 3 : 1.6} />
+                <text x={c.x} y={c.y + 3.5} textAnchor="middle" style={{ fontSize: 10, fontWeight: 700 }} fill={col}>
+                  {p.rating >= 10 ? "★" : (p.rating > 0 ? "+" + p.rating : p.rating)}
+                </text>
+                <text x={c.x} y={c.y + r + 12} textAnchor="middle" style={{ fontSize: 8.5 }} className="fill-slate-300">
+                  {short}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //  MAIN APP
 //////////////////////////////////////////////////////////////////////////////
@@ -881,9 +1101,32 @@ function App() {
   const [query, setQuery] = React.useState("");
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [animKey, setAnimKey] = React.useState(0);
+  const [mapOpen, setMapOpen] = React.useState(false);
+  const [favorites, setFavorites] = useLocalStorage("bjjflow:favs", []);
+  const [savedFlows, setSavedFlows] = useLocalStorage("bjjflow:flows", []);
 
   const currentId = history[history.length - 1];
   const pos = POSITIONS[currentId];
+  const isFav = favorites.includes(currentId);
+
+  const toggleFav = (id) =>
+    setFavorites(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
+
+  const saveCurrentFlow = () => {
+    if (history.length < 2) return;
+    const entry = {
+      id: Date.now(),
+      path: [...history],
+      label: `${POSITIONS[history[0]].name} → ${POSITIONS[currentId].name}`,
+      steps: history.length,
+    };
+    setSavedFlows(s => [entry, ...s].slice(0, 25));
+  };
+  const loadFlow = (path) => {
+    const clean = path.filter(id => POSITIONS[id]);
+    if (clean.length) { setHistory(clean); setAnimKey(k => k + 1); setSidebarOpen(false); }
+  };
+  const deleteFlow = (id) => setSavedFlows(s => s.filter(e => e.id !== id));
 
   const goTo = (id, { viaArchive = false } = {}) => {
     if (!POSITIONS[id]) return;
@@ -913,6 +1156,11 @@ function App() {
           setQuery={setQuery}
           onPick={(id) => goTo(id, { viaArchive: true })}
           onClose={() => setSidebarOpen(false)}
+          favorites={favorites}
+          onToggleFav={toggleFav}
+          savedFlows={savedFlows}
+          onLoadFlow={loadFlow}
+          onDeleteFlow={deleteFlow}
         />
       </div>
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
@@ -932,6 +1180,14 @@ function App() {
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <button onClick={() => toggleFav(currentId)} title="Favorite this position"
+              className={`text-sm px-2.5 py-1.5 rounded-lg border transition ${isFav ? "bg-amber-500/20 text-amber-300 border-amber-400/40" : "bg-ink-700 hover:bg-ink-600 text-slate-300 border-white/5"}`}>
+              {isFav ? "★" : "☆"}
+            </button>
+            <button onClick={() => setMapOpen(true)} title="Open the flow map"
+              className="text-sm px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 transition">
+              🗺️ <span className="hidden sm:inline">Map</span>
+            </button>
             <button onClick={back} disabled={history.length <= 1}
               className="text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center gap-1.5">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -948,6 +1204,11 @@ function App() {
         <div className="shrink-0 px-4 sm:px-6 py-2.5 border-b border-white/5 bg-ink-900/40 flex items-center gap-3 overflow-x-auto">
           <span className="text-[10px] uppercase tracking-widest text-slate-500 shrink-0">Flow Path</span>
           <Breadcrumb history={history} onJump={jumpTo} />
+          <button onClick={saveCurrentFlow} disabled={history.length < 2}
+            title="Save this flow path"
+            className="ml-auto shrink-0 text-xs px-2.5 py-1 rounded-md bg-ink-700 hover:bg-ink-600 text-slate-300 border border-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition">
+            💾 <span className="hidden sm:inline">Save Flow</span>
+          </button>
         </div>
 
         {/* Scrollable content */}
@@ -1018,6 +1279,9 @@ function App() {
           </div>
         </div>
       </main>
+
+      {mapOpen && <MapGraph current={currentId} onClose={() => setMapOpen(false)}
+        onPick={(id) => { goTo(id, { viaArchive: true }); setMapOpen(false); }} />}
     </div>
   );
 }
