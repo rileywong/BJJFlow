@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BJJFlow — Interactive BJJ Position Flow Tree</title>
+
+  <!--
+  ============================================================================
+   BJJFlow  ·  An Endless Brazilian Jiu-Jitsu Position Flow Tree
+  ============================================================================
+   A single, self-contained HTML file. No build step. Open it in any browser.
+
+   Stack:
+     - React 18 (UMD via CDN)
+     - Babel Standalone (in-browser JSX transpile)
+     - Tailwind CSS (Play CDN) + a small custom CSS layer
+     - 100% inline data — the entire BJJ "web" lives in the POSITIONS object.
+
+   How it works:
+     - State starts at "standing" (both players neutral / on the feet).
+     - Each position lists "transitions": clickable Action nodes that FREEZE
+       the current state and PIVOT into a new position.
+     - A searchable Archive sidebar lets you jump directly to ANY position.
+     - Every position renders: a stylized SVG mat scene, a description
+       (alignment + top/bottom objectives + common grips), a positional
+       Advantage gauge (-5 .. +5), and an AI image-generation prompt you can
+       copy to batch-generate real photos later.
+
+  ============================================================================
+   IMAGE GENERATION PROMPTS  (swap the SVG scenes for real renders later)
+  ============================================================================
+   Each prompt below maps 1:1 to a position id. Recommended global style
+   prefix for batch generation to keep a consistent look:
+
+     "High-definition studio photograph, two Brazilian Jiu-Jitsu athletes,
+      one in a navy-blue gi and one in a white gi, clean light-grey seamless
+      background, soft cinematic key light, shot on 50mm, shallow depth of
+      field, crisp focus, instructional clarity --ar 4:3"
+
+   Per-position subject:
+     standing            -> "...both athletes standing in a neutral collar-and-elbow tie-up, balanced fighting stance, about to engage."
+     closed-guard-bottom -> "...bottom athlete on his back with legs locked around the top athlete's waist (closed guard), gripping collar and sleeve, breaking posture."
+     closed-guard-top    -> "...top athlete kneeling inside a closed guard, posture upright, hands controlling the bottom athlete's hips, preparing to open and pass."
+     dlr-bottom          -> "...bottom athlete playing De La Riva open guard, outside hook wrapped around the top athlete's lead leg, gripping the heel and sleeve."
+     spider-bottom       -> "...bottom athlete playing spider guard, both feet on the top athlete's biceps, arms extended controlling both sleeves, tension in the legs."
+     butterfly-bottom    -> "...bottom athlete seated in butterfly guard, both hooks inside the top athlete's thighs, underhook and body-lock, loading for an elevation sweep."
+     half-top            -> "...top athlete in half guard on top with a strong cross-face and underhook, flattening the bottom athlete, one leg trapped."
+     half-bottom         -> "...bottom athlete in half guard with a deep underhook and knee-shield, on his side, fighting to come up to the back or sweep."
+     deep-half-bottom    -> "...bottom athlete in deep half guard, burrowed underneath the top athlete hugging one leg, head to the inside, off-balancing for a waiter sweep."
+     side-top            -> "...top athlete in side control with a tight cross-face and far-side underhook, chest-to-chest pressure, hips low and heavy."
+     side-bottom         -> "...bottom athlete defending side control, near elbow framing into the hip and forearm into the neck, shrimping to recover guard."
+     mount-top           -> "...top athlete in full mount, knees high under the armpits, upright posture, hands posted, isolating an arm for an attack."
+     mount-bottom        -> "...bottom athlete mounted, bridging hard onto one shoulder while trapping an arm and leg, executing an upa escape."
+     back-attacker       -> "...attacker on the opponent's back with both hooks in and a seatbelt grip, chest sealed to the back, sliding the choking arm under the chin."
+     back-defender       -> "...defender escaping back control, chin tucked, two hands fighting the choking wrist, shoulder-walking toward the mat to slide out."
+     turtle-top          -> "...top athlete attacking a turtled opponent, chest on the back with a near-side seatbelt and waist grip, threatening to insert hooks."
+     turtle-bottom       -> "...bottom athlete in a tight defensive turtle, elbows and knees connected, protecting the neck, ready to granby roll or stand up."
+     sub-rnc             -> "...attacker finishing a rear naked choke from back control, both hooks in, choking arm under the chin, second hand behind the head, opponent tapping."
+     sub-armbar          -> "...attacker finishing a juji-gatame armbar, hips raised, opponent's arm extended thumb-up between the thighs."
+     sub-triangle        -> "...bottom athlete finishing a triangle choke from guard, legs figure-foured around the opponent's neck and one arm, pulling the head down."
+     sub-kimura          -> "...attacker finishing a kimura shoulder lock, figure-four grip on the wrist, rotating the opponent's arm behind the back."
+     sub-collar-choke    -> "...top athlete finishing a cross-collar choke from mount, both hands deep in the lapels, elbows flaring, opponent tapping."
+     sub-guillotine      -> "...attacker finishing a guillotine choke, opponent's head trapped under the armpit, choking arm under the chin, pulling up with a high elbow."
+  ============================================================================
+  -->
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            display: ['"Space Grotesk"', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            ink: {
+              950: '#070a12', 900: '#0b0f1a', 850: '#0f1422',
+              800: '#141a2b', 700: '#1c2438', 600: '#27314a',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    html, body, #root { height: 100%; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(1200px 600px at 12% -8%, rgba(99,102,241,.18), transparent 60%),
+        radial-gradient(1000px 500px at 100% 0%, rgba(16,185,129,.12), transparent 55%),
+        #070a12;
+      color: #e6e9f2;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #27314a; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a466a; background-clip: padding-box; }
+
+    .glass {
+      background: linear-gradient(180deg, rgba(20,26,43,.85), rgba(11,15,26,.85));
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .node-card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease; }
+    .node-card:hover { transform: translateY(-3px); }
+    .fade-key { animation: fadeUp .35s cubic-bezier(.2,.7,.2,1) both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: none; } }
+    .pulse-dot { animation: pulse 2.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity:.35; } 50% { opacity:1; } }
+    .scene-fig { transition: all .4s cubic-bezier(.2,.7,.2,1); }
+    .grid-bg {
+      background-image:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 26px 26px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+//////////////////////////////////////////////////////////////////////////////
+//  DATA LAYER — The BJJ Web
+//  ---------------------------------------------------------------------------
+//  Each position node:
+//    id          unique key
+//    name        display name
+//    group       archive grouping bucket
+//    rating      positional hierarchy, -5 (worst) .. +5 (best). Subs = +10.
+//    layout      which SVG mat-scene to render
+//    perspective whose point of view this node is from ('top' | 'bottom' | 'neutral')
+//    summary     one-liner shown in archive
+//    alignment   how the bodies are arranged
+//    top         objective for the top / dominant player
+//    bottom      objective for the bottom / disadvantaged player
+//    grips       common grips & controls
+//    imagePrompt subject string for AI image generation (see header comment)
+//    transitions [ { label, kind, detail, to } ]
+//
+//  transition.kind drives the color/icon:
+//    takedown | pass | sweep | escape | backtake | transition | submission | reset
+//////////////////////////////////////////////////////////////////////////////
+
+const POSITIONS = {
+  /* ----------------------------------------------------------------- NEUTRAL */
+  standing: {
+    id: "standing",
+    name: "Standing / Neutral",
+    group: "Neutral",
+    rating: 0,
+    layout: "standing",
+    perspective: "neutral",
+    summary: "Both athletes on the feet. The match begins here.",
+    alignment: "Both practitioners upright in a fighting stance, squared up in a collar-and-elbow tie-up. Even footing, no positional advantage yet.",
+    top: "Win grips, break posture, and score a takedown to land in a dominant position — or force the opponent to concede guard.",
+    bottom: "Mirror objective: control grips and angles. If outmatched on the feet, pull guard on your terms rather than getting taken down.",
+    grips: "Collar-and-elbow tie-up, cross-collar + sleeve, two-on-one (Russian) wrist control, underhooks in the clinch.",
+    imagePrompt: "both athletes standing in a neutral collar-and-elbow tie-up, balanced fighting stance, about to engage.",
+    transitions: [
+      { label: "Shoot Double Leg", kind: "takedown", detail: "Level change, penetration step, drive through the hips and finish on top.", to: "side-top" },
+      { label: "Single Leg → Run the Pipe", kind: "takedown", detail: "Capture a leg, clear the hips, and finish on top into side control.", to: "side-top" },
+      { label: "Snap Down to Front Headlock", kind: "transition", detail: "Break posture and snap the head down, forcing the opponent to turtle.", to: "turtle-top" },
+      { label: "Pull Closed Guard", kind: "transition", detail: "Sit to your seat with collar+sleeve grips and lock your legs around the waist.", to: "closed-guard-bottom" },
+      { label: "Sit to Butterfly Guard", kind: "transition", detail: "Drop to a seated open guard with hooks ready under the thighs.", to: "butterfly-bottom" },
+      { label: "Get Taken Down", kind: "escape", detail: "Opponent hits the takedown — you land underneath in side control bottom.", to: "side-bottom" },
+    ],
+  },
+
+  /* ------------------------------------------------------------------- GUARD */
+  "closed-guard-bottom": {
+    id: "closed-guard-bottom",
+    name: "Closed Guard (Bottom)",
+    group: "Guard",
+    rating: 0,
+    layout: "guard-bottom",
+    perspective: "bottom",
+    summary: "On your back, ankles locked behind the opponent's back.",
+    alignment: "You are on your back with your legs wrapped around the top player's waist, ankles crossed. The most neutral 'offensive' bottom position — heavily attack-oriented.",
+    top: "Open the legs, establish posture, control the hips, and begin to pass. Never get your posture broken.",
+    bottom: "Break the opponent's posture, control a sleeve and the collar, create angles, and hunt sweeps and submissions (armbar, triangle, omoplata).",
+    grips: "Cross-collar + same-side sleeve, double-sleeve, overhook (rubber-guard entries), wrist control to kill the post.",
+    imagePrompt: "bottom athlete on his back with legs locked around the top athlete's waist (closed guard), gripping collar and sleeve, breaking posture.",
+    transitions: [
+      { label: "Hip Bump Sweep", kind: "sweep", detail: "Sit up, post, and bump the posted opponent over — come up into mount.", to: "mount-top" },
+      { label: "Scissor Sweep", kind: "sweep", detail: "Knee-shield + collar/sleeve, scissor the legs and take top.", to: "mount-top" },
+      { label: "Kimura Sweep", kind: "sweep", detail: "Lock the kimura, off-balance, and roll up to side control on top.", to: "side-top" },
+      { label: "Armbar from Guard", kind: "submission", detail: "Control the arm, angle off, and swing the leg over for juji-gatame.", to: "sub-armbar" },
+      { label: "Triangle Choke", kind: "submission", detail: "Trap an arm in, shoot the legs up, lock the figure-four on the neck.", to: "sub-triangle" },
+      { label: "Open to De La Riva", kind: "transition", detail: "Open the guard and establish a De La Riva hook as the opponent stands.", to: "dlr-bottom" },
+      { label: "Posture Broken / Guard Opened", kind: "escape", detail: "Opponent posters up and opens you — they begin passing into half guard top.", to: "half-top" },
+    ],
+  },
+
+  "closed-guard-top": {
+    id: "closed-guard-top",
+    name: "Closed Guard (Top)",
+    group: "Guard",
+    rating: 1,
+    layout: "guard-top",
+    perspective: "top",
+    summary: "Kneeling inside the opponent's locked legs, working to pass.",
+    alignment: "You are inside the opponent's closed guard, posture upright, weight settled. Slightly favorable: you dictate when the action starts, but you must pass to score.",
+    top: "Maintain posture, control both hips, open the legs (knee-in or standing break), then pass to side control or knee-cut to half.",
+    bottom: "Keep your posture broken and hunt sweeps/subs — see Closed Guard (Bottom).",
+    grips: "Double-hips/double-lapel control, knee-in-tailbone, standing posture with cross-grip on the pant.",
+    imagePrompt: "top athlete kneeling inside a closed guard, posture upright, hands controlling the bottom athlete's hips, preparing to open and pass.",
+    transitions: [
+      { label: "Stand & Knee-Cut Pass", kind: "pass", detail: "Open the legs standing, slice the knee through, and pin into side control.", to: "side-top" },
+      { label: "Stack Pass to Side Control", kind: "pass", detail: "Stack the hips overhead, clear the legs, and settle chest-to-chest.", to: "side-top" },
+      { label: "Pass to Half Guard", kind: "pass", detail: "Open and drive a knee through — opponent retains a half-guard hook.", to: "half-top" },
+      { label: "Get Hip-Bumped / Swept", kind: "escape", detail: "Opponent times a sweep and reverses you — you land mounted.", to: "mount-bottom" },
+      { label: "Caught in a Triangle", kind: "submission", detail: "You post an arm in and get triangled — opponent finishes the choke.", to: "sub-triangle" },
+    ],
+  },
+
+  "dlr-bottom": {
+    id: "dlr-bottom",
+    name: "De La Riva Guard",
+    group: "Guard",
+    rating: 1,
+    layout: "guard-bottom",
+    perspective: "bottom",
+    summary: "Open guard with an outside hook around the lead leg.",
+    alignment: "Seated/reclined open guard. Your outside (De La Riva) hook wraps behind the opponent's lead knee while you grip the heel and a sleeve. A premier modern sweeping & back-taking platform.",
+    top: "Free the trapped leg, kill the hooks, flatten the grips, and pass (leg-drag, knee-cut, or toreando).",
+    bottom: "Off-balance with the hook, load weight onto the far leg, and either sweep up or rotate underneath to take the back (berimbolo).",
+    grips: "DLR hook + heel grip + collar/sleeve, or hook + same-side sleeve and pant cuff for the berimbolo.",
+    imagePrompt: "bottom athlete playing De La Riva open guard, outside hook wrapped around the top athlete's lead leg, gripping the heel and sleeve.",
+    transitions: [
+      { label: "Berimbolo to the Back", kind: "backtake", detail: "Invert under the hips, rotate through, and come up with both hooks on the back.", to: "back-attacker" },
+      { label: "DLR Sweep (Off-Balance)", kind: "sweep", detail: "Extend the hook and pull the sleeve to dump the opponent — come up on top.", to: "side-top" },
+      { label: "Transition to Spider Guard", kind: "transition", detail: "Switch feet to the biceps and extend into spider control.", to: "spider-bottom" },
+      { label: "Leg-Dragged / Passed", kind: "escape", detail: "Opponent clears the hook with a leg-drag and pins you in side control.", to: "side-bottom" },
+    ],
+  },
+
+  "spider-bottom": {
+    id: "spider-bottom",
+    name: "Spider Guard",
+    group: "Guard",
+    rating: 1,
+    layout: "guard-bottom",
+    perspective: "bottom",
+    summary: "Both feet on the biceps, controlling both sleeves under tension.",
+    alignment: "On your back with both feet pushing into the opponent's biceps and a strong double-sleeve grip. A distance-management guard built on leg tension and grip fighting.",
+    top: "Break the sleeve grips, pin the feet to the mat or shoulders, and pass around the legs (smash or knee-cut).",
+    bottom: "Use leg extension and sleeve control to off-balance, then sweep, enter a triangle, or transition to other guards.",
+    grips: "Double-sleeve (pistol grip) + feet on biceps; one foot on hip for the 'tripod/sickle' sweeps.",
+    imagePrompt: "bottom athlete playing spider guard, both feet on the top athlete's biceps, arms extended controlling both sleeves, tension in the legs.",
+    transitions: [
+      { label: "Tripod / Sickle Sweep", kind: "sweep", detail: "One foot on the hip, hook the heel, and topple the opponent to come up on top.", to: "side-top" },
+      { label: "Spider Triangle", kind: "submission", detail: "Drag one arm across, shoot the legs up, and lock the triangle.", to: "sub-triangle" },
+      { label: "Transition to Butterfly", kind: "transition", detail: "Drop the feet to hooks and sit up into butterfly guard.", to: "butterfly-bottom" },
+      { label: "Grips Broken / Passed", kind: "escape", detail: "Opponent strips the sleeves and smash-passes into side control.", to: "side-bottom" },
+    ],
+  },
+
+  "butterfly-bottom": {
+    id: "butterfly-bottom",
+    name: "Butterfly Guard",
+    group: "Guard",
+    rating: 1,
+    layout: "guard-bottom",
+    perspective: "bottom",
+    summary: "Seated guard with both hooks inside the thighs.",
+    alignment: "Seated, chest up, both butterfly hooks inside the opponent's thighs, fighting for an underhook or body-lock. The premier elevation-sweep platform.",
+    top: "Flatten the bottom player, kill the hooks (cross-face + underhook), and pass by pinning the hips.",
+    bottom: "Win the underhook, load the opponent onto your hooks, and elevate them over for a sweep — or arm-drag to the back.",
+    grips: "Underhook + same-side collar, two-on-one arm-drag grip, body-lock around the waist.",
+    imagePrompt: "bottom athlete seated in butterfly guard, both hooks inside the top athlete's thighs, underhook and body-lock, loading for an elevation sweep.",
+    transitions: [
+      { label: "Butterfly Hook Sweep", kind: "sweep", detail: "Underhook, fall to the side, and elevate with the hook to come up in mount.", to: "mount-top" },
+      { label: "Arm Drag to the Back", kind: "backtake", detail: "Two-on-one drag past the arm, slide to the hips, and take the back.", to: "back-attacker" },
+      { label: "Sweep to Side Control", kind: "sweep", detail: "Off-balance and follow up on top into side control.", to: "side-top" },
+      { label: "Flattened & Passed", kind: "escape", detail: "Opponent cross-faces, kills the hooks, and passes to side control.", to: "side-bottom" },
+    ],
+  },
+
+  /* -------------------------------------------------------------- HALF GUARD */
+  "half-bottom": {
+    id: "half-bottom",
+    name: "Half Guard (Bottom)",
+    group: "Half Guard",
+    rating: -1,
+    layout: "half-bottom",
+    perspective: "bottom",
+    summary: "On your side, one of the opponent's legs trapped, fighting for the underhook.",
+    alignment: "On your side with one of the opponent's legs trapped between yours and a knee-shield or deep underhook. Slightly defensive, but a powerful springboard to sweeps and back-takes.",
+    top: "Win the cross-face + far underhook, flatten the bottom player, free the leg, and pass to side control or mount.",
+    bottom: "Win the underhook, get to your side, and either come up to the back, hit the old-school sweep, or dive to deep half.",
+    grips: "Deep underhook + knee-shield, lockdown on the trapped leg, lapel/back grip after the underhook.",
+    imagePrompt: "bottom athlete in half guard with a deep underhook and knee-shield, on his side, fighting to come up to the back or sweep.",
+    transitions: [
+      { label: "Underhook → Take the Back", kind: "backtake", detail: "Come up on the underhook, get behind the opponent, and insert both hooks.", to: "back-attacker" },
+      { label: "Old School Sweep", kind: "sweep", detail: "Underhook + grab the far ankle, drive over the top, and come up in side control.", to: "side-top" },
+      { label: "Dive to Deep Half", kind: "transition", detail: "Slide under the hips and hug the leg to enter deep half guard.", to: "deep-half-bottom" },
+      { label: "Recover Full Guard", kind: "transition", detail: "Frame, hip out, and circle the free leg in to closed guard.", to: "closed-guard-bottom" },
+      { label: "Flattened & Passed", kind: "escape", detail: "Opponent gets the cross-face/underhook and clears the leg to side control.", to: "side-bottom" },
+    ],
+  },
+
+  "half-top": {
+    id: "half-top",
+    name: "Half Guard (Top)",
+    group: "Half Guard",
+    rating: 2,
+    layout: "side",
+    perspective: "top",
+    summary: "On top with a leg trapped — one pass away from side control or mount.",
+    alignment: "On top, chest-to-chest, one leg trapped in the opponent's half guard. Favorable: a strong cross-face and underhook make passing very likely.",
+    top: "Maintain cross-face + underhook, flatten the opponent, free the trapped leg (knee-cut, toe-drag, or kick-out) and pass.",
+    bottom: "Win the underhook and recover — see Half Guard (Bottom).",
+    grips: "Cross-face + far-side underhook (the 'Gable' control), head-and-arm, lapel pin.",
+    imagePrompt: "top athlete in half guard on top with a strong cross-face and underhook, flattening the bottom athlete, one leg trapped.",
+    transitions: [
+      { label: "Knee-Cut to Side Control", kind: "pass", detail: "Slice the trapped knee free and settle chest-to-chest into side control.", to: "side-top" },
+      { label: "Free Leg & Mount", kind: "pass", detail: "Kick the leg out and slide directly into full mount.", to: "mount-top" },
+      { label: "Back Take (They Turn In)", kind: "backtake", detail: "Opponent turns to underhook; you ride the back and insert hooks.", to: "back-attacker" },
+      { label: "Underhook Swept", kind: "escape", detail: "Opponent gets the underhook and comes up — you're swept to the bottom.", to: "side-bottom" },
+    ],
+  },
+
+  "deep-half-bottom": {
+    id: "deep-half-bottom",
+    name: "Deep Half Guard",
+    group: "Half Guard",
+    rating: 1,
+    layout: "half-bottom",
+    perspective: "bottom",
+    summary: "Burrowed underneath, hugging one leg, off-balancing for sweeps.",
+    alignment: "You are deep underneath the opponent, head to the inside, both arms hugging one of their legs. A specialist sweeping position that nullifies passing pressure.",
+    top: "Free the trapped leg, base out, whizzer, and re-pass — or back-step around the deep half.",
+    bottom: "Off-balance the opponent over the hugged leg (waiter sweep), or roll through to the back/top.",
+    grips: "Two-arm hug on the thigh, lapel feed under the leg, knee-grab for the waiter sweep.",
+    imagePrompt: "bottom athlete in deep half guard, burrowed underneath the top athlete hugging one leg, head to the inside, off-balancing for a waiter sweep.",
+    transitions: [
+      { label: "Waiter Sweep", kind: "sweep", detail: "Load the leg overhead like a tray and roll the opponent over to come up on top.", to: "side-top" },
+      { label: "Back Take from Deep Half", kind: "backtake", detail: "Walk around to the hips and climb onto the back.", to: "back-attacker" },
+      { label: "Re-Passed", kind: "escape", detail: "Opponent frees the leg and whizzer-passes to side control.", to: "side-bottom" },
+    ],
+  },
+
+  /* ------------------------------------------------------------ SIDE CONTROL */
+  "side-top": {
+    id: "side-top",
+    name: "Side Control (Top)",
+    group: "Side Control",
+    rating: 3,
+    layout: "side",
+    perspective: "top",
+    summary: "Chest-to-chest pin, perpendicular across the opponent.",
+    alignment: "You are perpendicular and chest-to-chest, cross-facing with a far-side underhook, hips low and heavy. A strong, dominant control position (+3).",
+    top: "Maintain the pin, isolate an arm, then advance to mount, take the back, or finish (kimura, americana, paper-cutter).",
+    bottom: "Frame, create space, and recover guard or escape — see Side Control (Bottom).",
+    grips: "Cross-face + far underhook, 100-kilo/twister-side control, gift-wrap, near-hip + cross-face block.",
+    imagePrompt: "top athlete in side control with a tight cross-face and far-side underhook, chest-to-chest pressure, hips low and heavy.",
+    transitions: [
+      { label: "Knee-Slide to Mount", kind: "transition", detail: "Slide the near knee over the belly and settle into full mount.", to: "mount-top" },
+      { label: "Take the Back", kind: "backtake", detail: "Opponent turns away; gift-wrap the arm and climb to the back.", to: "back-attacker" },
+      { label: "Kimura / Americana", kind: "submission", detail: "Isolate the near arm and crank the figure-four shoulder lock.", to: "sub-kimura" },
+      { label: "North-South → Reset Pin", kind: "transition", detail: "Spin to north-south to clear a frame, then return to a tighter side control.", to: "side-top" },
+      { label: "Guard Recovered", kind: "escape", detail: "Opponent frames and shrimps; you end up back inside their closed guard.", to: "closed-guard-top" },
+    ],
+  },
+
+  "side-bottom": {
+    id: "side-bottom",
+    name: "Side Control (Bottom)",
+    group: "Side Control",
+    rating: -3,
+    layout: "side",
+    perspective: "bottom",
+    summary: "Pinned under chest pressure — escape before you get mounted.",
+    alignment: "You are flattened under a perpendicular chest-to-chest pin. A bad spot (-3): the immediate job is survival and escape before the opponent advances.",
+    top: "Hold the pin and advance — see Side Control (Top).",
+    bottom: "Frame against the cross-face and hip, recover guard, bridge-and-roll, or come up to turtle to escape.",
+    grips: "Near-elbow frame into the hip, forearm into the neck/cross-face, underhook to come to knees.",
+    imagePrompt: "bottom athlete defending side control, near elbow framing into the hip and forearm into the neck, shrimping to recover guard.",
+    transitions: [
+      { label: "Shrimp & Recover Guard", kind: "escape", detail: "Frame, shrimp the hips out, and insert a knee to recover closed guard.", to: "closed-guard-bottom" },
+      { label: "Recover Half Guard", kind: "escape", detail: "Shrimp and trap a leg on the way out into half guard bottom.", to: "half-bottom" },
+      { label: "Underhook to Turtle", kind: "escape", detail: "Win the underhook and come up to your knees into turtle.", to: "turtle-bottom" },
+      { label: "Get Mounted", kind: "escape", detail: "Opponent slides the knee across — you're now mounted.", to: "mount-bottom" },
+    ],
+  },
+
+  /* -------------------------------------------------------------------- MOUNT */
+  "mount-top": {
+    id: "mount-top",
+    name: "Full Mount (Top)",
+    group: "Mount",
+    rating: 4,
+    layout: "mount",
+    perspective: "top",
+    summary: "Sitting on the opponent's torso — a dominant, high-scoring position.",
+    alignment: "You straddle the opponent's torso, knees climbing toward the armpits. One of the most dominant positions in BJJ (+4): heavy control with a buffet of attacks.",
+    top: "Climb high, isolate an arm, and finish (armbar, cross-collar choke, ezekiel) — or take the back when they turn.",
+    bottom: "Bridge, trap, and escape before an attack lands — see Full Mount (Bottom).",
+    grips: "Double-underhooks/grapevines (low mount), S-mount with arm isolation (high mount), cross-collar grip.",
+    imagePrompt: "top athlete in full mount, knees high under the armpits, upright posture, hands posted, isolating an arm for an attack.",
+    transitions: [
+      { label: "Armbar from Mount", kind: "submission", detail: "Climb to S-mount, isolate the arm, and spin to the juji-gatame.", to: "sub-armbar" },
+      { label: "Cross-Collar Choke", kind: "submission", detail: "Feed both lapels deep and flare the elbows for the choke.", to: "sub-collar-choke" },
+      { label: "Take the Back", kind: "backtake", detail: "Opponent turns to escape; ride the rotation and insert both hooks.", to: "back-attacker" },
+      { label: "Upa / Bridge-and-Roll Reversed", kind: "escape", detail: "Opponent traps your arm and bridges — you're swept into their guard.", to: "closed-guard-top" },
+    ],
+  },
+
+  "mount-bottom": {
+    id: "mount-bottom",
+    name: "Full Mount (Bottom)",
+    group: "Mount",
+    rating: -4,
+    layout: "mount",
+    perspective: "bottom",
+    summary: "Mounted and under heavy pressure — escape is priority #1.",
+    alignment: "You are flat on your back with the opponent straddling your torso. A dire spot (-4): protect your neck and arms, and escape immediately.",
+    top: "Stay heavy and attack — see Full Mount (Top).",
+    bottom: "Trap an arm and leg and bridge hard (upa) to reverse, or elbow-knee escape to recover half/closed guard.",
+    grips: "Two-on-one wrist trap + same-side leg trap for the upa; elbow frames into the thighs for the knee-elbow escape.",
+    imagePrompt: "bottom athlete mounted, bridging hard onto one shoulder while trapping an arm and leg, executing an upa escape.",
+    transitions: [
+      { label: "Upa (Bridge & Roll)", kind: "escape", detail: "Trap the arm + leg, bridge over the shoulder, and end on top in their guard.", to: "closed-guard-top" },
+      { label: "Elbow-Knee Escape", kind: "escape", detail: "Frame the thighs, shrimp, and slide a knee in to recover half guard.", to: "half-bottom" },
+      { label: "Give Up the Back", kind: "escape", detail: "Turn to your knees to escape pressure but expose your back.", to: "back-defender" },
+    ],
+  },
+
+  /* -------------------------------------------------------------- BACK CONTROL */
+  "back-attacker": {
+    id: "back-attacker",
+    name: "Back Control (Attacker)",
+    group: "Back Control",
+    rating: 5,
+    layout: "back",
+    perspective: "top",
+    summary: "Both hooks in, seatbelt grip — the most dominant position in BJJ.",
+    alignment: "Chest sealed to the opponent's back, both hooks (or a body triangle) in, seatbelt harness over one shoulder and under the other arm. The apex of the hierarchy (+5).",
+    top: "Stay glued to the back, win the hand-fight, expose the neck, and finish the rear naked choke or a collar choke (bow-and-arrow).",
+    bottom: "Protect the neck, clear a hook, and slide the hips down to escape — see Back Control (Defender).",
+    grips: "Seatbelt (over-under harness) + double hooks or body triangle; choking hand under the chin.",
+    imagePrompt: "attacker on the opponent's back with both hooks in and a seatbelt grip, chest sealed to the back, sliding the choking arm under the chin.",
+    transitions: [
+      { label: "Rear Naked Choke", kind: "submission", detail: "Slide the choking arm under the chin, lock the second hand, and squeeze.", to: "sub-rnc" },
+      { label: "Bow & Arrow Choke", kind: "submission", detail: "Grab the collar over the shoulder + the pant leg, and finish the collar choke.", to: "sub-collar-choke" },
+      { label: "Lost a Hook → Re-Mount", kind: "transition", detail: "Opponent clears a hook; follow the turn back up into full mount.", to: "mount-top" },
+      { label: "Opponent Escapes", kind: "escape", detail: "Opponent slides down and turns in — you regain side control top.", to: "side-top" },
+    ],
+  },
+
+  "back-defender": {
+    id: "back-defender",
+    name: "Back Control (Defender)",
+    group: "Back Control",
+    rating: -5,
+    layout: "back",
+    perspective: "bottom",
+    summary: "Back taken with hooks in — survive the choke and escape.",
+    alignment: "The opponent is on your back with hooks/harness in. The worst spot in BJJ (-5): the choke is the immediate threat. Defend the neck, then escape.",
+    top: "Finish the choke — see Back Control (Attacker).",
+    bottom: "Two-hand the choking wrist, tuck the chin, clear a hook, and shoulder-walk down to the mat to come on top of the hips.",
+    grips: "Two-on-one on the choking wrist, chin tuck, scoop the bottom hook to slide out.",
+    imagePrompt: "defender escaping back control, chin tucked, two hands fighting the choking wrist, shoulder-walking toward the mat to slide out.",
+    transitions: [
+      { label: "Clear Hooks & Escape", kind: "escape", detail: "Pin the choking arm, slide your hips to the mat, and turn into the opponent — landing mounted but alive.", to: "mount-bottom" },
+      { label: "Slide Down to Half Guard", kind: "escape", detail: "Scoot down, clear a hook, and recover half guard bottom.", to: "half-bottom" },
+      { label: "Caught — Rear Naked Choke", kind: "submission", detail: "You lose the hand-fight and the choke is locked.", to: "sub-rnc" },
+    ],
+  },
+
+  /* ------------------------------------------------------------------- TURTLE */
+  "turtle-top": {
+    id: "turtle-top",
+    name: "Turtle (Top)",
+    group: "Turtle",
+    rating: 2,
+    layout: "turtle",
+    perspective: "top",
+    summary: "Attacking a turtled opponent — seatbelt on, hunting the back.",
+    alignment: "The opponent is turtled (on knees and elbows); you are over the back with a seatbelt and waist control, threatening to insert hooks. Favorable (+2) — a gateway to the back.",
+    top: "Break the opponent down, insert hooks to take the back, or spin to a front-headlock submission.",
+    bottom: "Stay tight, protect the neck, and re-guard or stand — see Turtle (Bottom).",
+    grips: "Seatbelt + waist/belt grip, near-side hook insertion, front-headlock / guillotine grip.",
+    imagePrompt: "top athlete attacking a turtled opponent, chest on the back with a near-side seatbelt and waist grip, threatening to insert hooks.",
+    transitions: [
+      { label: "Insert Hooks → Take the Back", kind: "backtake", detail: "Drop a hook in, roll the opponent up, and lock back control.", to: "back-attacker" },
+      { label: "Break Down to Side Control", kind: "pass", detail: "Flatten the opponent off their knees and settle into side control.", to: "side-top" },
+      { label: "Spin to Guillotine", kind: "submission", detail: "Front headlock, spin to the front, and finish the guillotine choke.", to: "sub-guillotine" },
+      { label: "Opponent Re-Guards", kind: "escape", detail: "Opponent granby rolls or sits to guard — back to butterfly.", to: "butterfly-bottom" },
+    ],
+  },
+
+  "turtle-bottom": {
+    id: "turtle-bottom",
+    name: "Turtle (Bottom)",
+    group: "Turtle",
+    rating: -2,
+    layout: "turtle",
+    perspective: "bottom",
+    summary: "On knees and elbows, protecting the neck — a scramble position.",
+    alignment: "You are tucked into a defensive turtle, elbows-to-knees, neck protected. A vulnerable but mobile scramble spot (-2): act fast before the back is taken.",
+    top: "Take the back or break the turtle down — see Turtle (Top).",
+    bottom: "Granby roll to recover guard, sit out to stand, or roll through to come up on top.",
+    grips: "Tight elbows/knees, hands protecting the neck, wrist control on the seatbelt to prevent the choke.",
+    imagePrompt: "bottom athlete in a tight defensive turtle, elbows and knees connected, protecting the neck, ready to granby roll or stand up.",
+    transitions: [
+      { label: "Granby Roll to Guard", kind: "escape", detail: "Shoulder-roll under the pressure and come out facing in butterfly guard.", to: "butterfly-bottom" },
+      { label: "Sit-Out to Standing", kind: "escape", detail: "Swing a leg through, sit out, and stand back up to neutral.", to: "standing" },
+      { label: "Roll to Top / Side Control", kind: "sweep", detail: "Granby into the opponent and come up on top in side control.", to: "side-top" },
+      { label: "Back Taken", kind: "escape", detail: "Opponent inserts hooks — you're now defending back control.", to: "back-defender" },
+    ],
+  },
+
+  /* --------------------------------------------------------------- SUBMISSIONS */
+  "sub-rnc": subNode("sub-rnc", "Rear Naked Choke", "Mata-leão — choking arm under the chin, second hand behind the head. A blood choke; the match is over.", "attacker finishing a rear naked choke from back control, both hooks in, choking arm under the chin, second hand behind the head, opponent tapping."),
+  "sub-armbar": subNode("sub-armbar", "Armbar (Juji-Gatame)", "Hips elevated, the opponent's arm trapped thumb-up between your thighs, hyperextending the elbow.", "attacker finishing a juji-gatame armbar, hips raised, opponent's arm extended thumb-up between the thighs."),
+  "sub-triangle": subNode("sub-triangle", "Triangle Choke", "Legs figure-foured around the neck and one arm, cutting the angle to finish the strangle.", "bottom athlete finishing a triangle choke from guard, legs figure-foured around the opponent's neck and one arm, pulling the head down."),
+  "sub-kimura": subNode("sub-kimura", "Kimura", "Figure-four grip on the wrist, rotating the shoulder behind the back beyond its range.", "attacker finishing a kimura shoulder lock, figure-four grip on the wrist, rotating the opponent's arm behind the back."),
+  "sub-collar-choke": subNode("sub-collar-choke", "Collar Choke", "Deep cross-lapel grips, elbows flaring — a strangle finished from mount, back, or guard.", "top athlete finishing a cross-collar choke from mount, both hands deep in the lapels, elbows flaring, opponent tapping."),
+  "sub-guillotine": subNode("sub-guillotine", "Guillotine Choke", "Head trapped under the arm, choking forearm under the chin, pulling up with a high elbow.", "attacker finishing a guillotine choke, opponent's head trapped under the armpit, choking arm under the chin, pulling up with a high elbow."),
+};
+
+// Helper: every submission is a terminal "finish" node that resets to standing.
+function subNode(id, name, desc, imagePrompt) {
+  return {
+    id, name, group: "Submissions", rating: 10, layout: "submission", perspective: "top",
+    summary: desc,
+    alignment: desc,
+    top: "Finish the submission with control — secure the tap.",
+    bottom: "Too late to defend from here. In live training, tap early and reset.",
+    grips: "See the position this submission was entered from.",
+    imagePrompt,
+    transitions: [
+      { label: "Reset to Standing", kind: "reset", detail: "Start a new flow from the neutral standing position.", to: "standing" },
+    ],
+  };
+}
+
+// Archive grouping order.
+const GROUP_ORDER = ["Neutral", "Guard", "Half Guard", "Side Control", "Mount", "Back Control", "Turtle", "Submissions"];
+
+// Transition-kind visual metadata.
+const KIND_META = {
+  takedown:   { label: "Takedown",   icon: "🤼", ring: "ring-sky-500/40",     dot: "bg-sky-400",     text: "text-sky-300" },
+  pass:       { label: "Pass",       icon: "➡️", ring: "ring-violet-500/40",  dot: "bg-violet-400",  text: "text-violet-300" },
+  sweep:      { label: "Sweep",      icon: "🔄", ring: "ring-emerald-500/40", dot: "bg-emerald-400", text: "text-emerald-300" },
+  backtake:   { label: "Back Take",  icon: "🎯", ring: "ring-amber-500/40",   dot: "bg-amber-400",   text: "text-amber-300" },
+  submission: { label: "Submission", icon: "🏁", ring: "ring-rose-500/40",    dot: "bg-rose-400",    text: "text-rose-300" },
+  escape:     { label: "Escape",     icon: "🛡️", ring: "ring-slate-400/40",   dot: "bg-slate-300",   text: "text-slate-300" },
+  transition: { label: "Transition", icon: "↪️", ring: "ring-cyan-500/40",    dot: "bg-cyan-400",    text: "text-cyan-300" },
+  reset:      { label: "Reset",      icon: "♻️", ring: "ring-indigo-500/40",  dot: "bg-indigo-400",  text: "text-indigo-300" },
+};
+
+//////////////////////////////////////////////////////////////////////////////
+//  SVG MAT SCENES — stylized stand-in art (swap for AI images later)
+//  Two abstract athletes (blue gi / white gi) arranged per `layout`.
+//////////////////////////////////////////////////////////////////////////////
+
+function Figure({ x, y, rot = 0, scale = 1, color, accent, opacity = 1 }) {
+  // A minimalist humanoid: head + torso + limbs as rounded shapes.
+  return (
+    <g transform={`translate(${x},${y}) rotate(${rot}) scale(${scale})`} opacity={opacity} className="scene-fig">
+      {/* torso */}
+      <rect x={-13} y={-6} width={26} height={42} rx={12} fill={color} />
+      {/* belt accent */}
+      <rect x={-13} y={20} width={26} height={7} rx={3} fill={accent} />
+      {/* head */}
+      <circle cx={0} cy={-20} r={11} fill={color} />
+      {/* arms */}
+      <rect x={-24} y={0} width={12} height={30} rx={6} fill={color} />
+      <rect x={12} y={0} width={12} height={30} rx={6} fill={color} />
+      {/* legs */}
+      <rect x={-12} y={34} width={11} height={30} rx={6} fill={color} />
+      <rect x={1} y={34} width={11} height={30} rx={6} fill={color} />
+    </g>
+  );
+}
+
+const BLUE = "#5b7cfa", BLUE_BELT = "#1e3a8a";
+const WHITE = "#e7ebf5", WHITE_BELT = "#94a3b8";
+
+function MatScene({ layout }) {
+  // Each layout arranges the blue (focus) and white athletes differently.
+  const scenes = {
+    standing: (
+      <g>
+        <Figure x={150} y={95} color={BLUE} accent={BLUE_BELT} scale={1} />
+        <Figure x={250} y={95} color={WHITE} accent={WHITE_BELT} scale={1} />
+      </g>
+    ),
+    "guard-bottom": (
+      <g>
+        {/* white on top kneeling, blue on back beneath with legs up */}
+        <Figure x={205} y={150} color={WHITE} accent={WHITE_BELT} rot={0} scale={.95} />
+        <Figure x={205} y={150} color={BLUE} accent={BLUE_BELT} rot={90} scale={1} />
+      </g>
+    ),
+    "guard-top": (
+      <g>
+        <Figure x={195} y={150} color={WHITE} accent={WHITE_BELT} rot={90} scale={1} />
+        <Figure x={205} y={120} color={BLUE} accent={BLUE_BELT} rot={0} scale={.95} />
+      </g>
+    ),
+    "half-bottom": (
+      <g>
+        <Figure x={210} y={150} color={WHITE} accent={WHITE_BELT} rot={70} scale={.95} />
+        <Figure x={195} y={150} color={BLUE} accent={BLUE_BELT} rot={115} scale={1} />
+      </g>
+    ),
+    side: (
+      <g>
+        {/* horizontal pin: top figure across the bottom one */}
+        <Figure x={200} y={165} color={WHITE} accent={WHITE_BELT} rot={90} scale={1} />
+        <Figure x={200} y={120} color={BLUE} accent={BLUE_BELT} rot={2} scale={1} />
+      </g>
+    ),
+    mount: (
+      <g>
+        <Figure x={200} y={150} color={WHITE} accent={WHITE_BELT} rot={90} scale={1} />
+        <Figure x={200} y={120} color={BLUE} accent={BLUE_BELT} rot={0} scale={.9} />
+      </g>
+    ),
+    back: (
+      <g>
+        {/* attacker (blue) sealed behind defender (white) */}
+        <Figure x={188} y={120} color={WHITE} accent={WHITE_BELT} rot={0} scale={1} />
+        <Figure x={206} y={128} color={BLUE} accent={BLUE_BELT} rot={0} scale={.92} opacity={.95} />
+      </g>
+    ),
+    turtle: (
+      <g>
+        {/* bottom curled, top draped over */}
+        <Figure x={200} y={150} color={WHITE} accent={WHITE_BELT} rot={90} scale={.8} />
+        <Figure x={200} y={120} color={BLUE} accent={BLUE_BELT} rot={20} scale={.92} />
+      </g>
+    ),
+    submission: (
+      <g>
+        <Figure x={185} y={140} color={BLUE} accent={BLUE_BELT} rot={75} scale={1} />
+        <Figure x={215} y={150} color={WHITE} accent={WHITE_BELT} rot={20} scale={.85} opacity={.85} />
+      </g>
+    ),
+  };
+  return (
+    <svg viewBox="0 0 400 240" className="w-full h-full">
+      <defs>
+        <radialGradient id="matglow" cx="50%" cy="38%" r="65%">
+          <stop offset="0%" stopColor="#18223a" />
+          <stop offset="100%" stopColor="#0a0e18" />
+        </radialGradient>
+      </defs>
+      <rect x="0" y="0" width="400" height="240" fill="url(#matglow)" />
+      {/* mat ring */}
+      <ellipse cx="200" cy="150" rx="150" ry="74" fill="none" stroke="rgba(99,102,241,.25)" strokeWidth="2" />
+      <ellipse cx="200" cy="150" rx="110" ry="52" fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="1.5" />
+      {scenes[layout] || scenes.standing}
+    </svg>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//  UI COMPONENTS
+//////////////////////////////////////////////////////////////////////////////
+
+function RatingGauge({ rating }) {
+  const isSub = rating >= 10;
+  const clamped = Math.max(-5, Math.min(5, rating));
+  const pct = ((clamped + 5) / 10) * 100; // 0..100
+  const color =
+    isSub ? "#fb7185" :
+    rating > 2 ? "#34d399" :
+    rating > 0 ? "#86efac" :
+    rating === 0 ? "#fbbf24" :
+    rating > -3 ? "#fb923c" : "#f87171";
+  const label =
+    isSub ? "Finish" :
+    rating >= 4 ? "Dominant" :
+    rating > 0 ? "Advantage" :
+    rating === 0 ? "Neutral" :
+    rating > -4 ? "Disadvantage" : "Critical";
+
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs uppercase tracking-widest text-slate-400">Positional Advantage</span>
+        <span className="text-sm font-semibold" style={{ color }}>
+          {isSub ? "★ Submission" : `${rating > 0 ? "+" : ""}${rating} · ${label}`}
+        </span>
+      </div>
+      <div className="relative h-3 rounded-full bg-ink-700 overflow-hidden">
+        <div className="absolute inset-0" style={{
+          background: "linear-gradient(90deg, #ef4444 0%, #f59e0b 30%, #fbbf24 50%, #84cc16 70%, #10b981 100%)",
+          opacity: 0.35
+        }} />
+        {/* center tick */}
+        <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/25" />
+        {/* marker */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-5 w-5 rounded-full border-2 border-ink-950 shadow-lg transition-all duration-500"
+          style={{ left: `${pct}%`, background: color, boxShadow: `0 0 14px ${color}` }}
+        />
+      </div>
+      <div className="flex justify-between mt-1 text-[10px] text-slate-500 font-medium">
+        <span>−5 Worst</span><span>0 Neutral</span><span>+5 Best</span>
+      </div>
+    </div>
+  );
+}
+
+function TransitionCard({ t, onClick }) {
+  const meta = KIND_META[t.kind] || KIND_META.transition;
+  const target = POSITIONS[t.to];
+  return (
+    <button
+      onClick={onClick}
+      className={`node-card group text-left w-full rounded-2xl glass ring-1 ${meta.ring} hover:ring-2 p-4 hover:bg-ink-700/40 focus:outline-none focus:ring-2`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="text-2xl leading-none mt-0.5 select-none">{meta.icon}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${meta.text}`}>{meta.label}</span>
+            <span className="h-1 w-1 rounded-full bg-slate-600" />
+            <span className="text-[10px] text-slate-500 truncate">→ {target ? target.name : t.to}</span>
+          </div>
+          <div className="font-semibold text-slate-100 group-hover:text-white">{t.label}</div>
+          <div className="text-xs text-slate-400 mt-1 leading-relaxed">{t.detail}</div>
+        </div>
+        <svg className="w-5 h-5 text-slate-600 group-hover:text-slate-300 transition-transform group-hover:translate-x-1 shrink-0 mt-1"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    </button>
+  );
+}
+
+function CopyPrompt({ text }) {
+  const [copied, setCopied] = React.useState(false);
+  return (
+    <button
+      onClick={() => {
+        navigator.clipboard?.writeText(text).then(() => {
+          setCopied(true); setTimeout(() => setCopied(false), 1400);
+        });
+      }}
+      className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-ink-700 hover:bg-ink-600 text-slate-300 border border-white/5 transition"
+    >
+      {copied ? "✓ Copied" : "Copy prompt"}
+    </button>
+  );
+}
+
+function Archive({ current, query, setQuery, onPick, onClose }) {
+  const q = query.trim().toLowerCase();
+  const groups = GROUP_ORDER.map(g => ({
+    name: g,
+    items: Object.values(POSITIONS).filter(p =>
+      p.group === g && (!q || p.name.toLowerCase().includes(q) || p.summary.toLowerCase().includes(q) || p.group.toLowerCase().includes(q))
+    ),
+  })).filter(g => g.items.length);
+
+  return (
+    <aside className="flex flex-col h-full">
+      <div className="p-4 border-b border-white/5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📚</span>
+            <h2 className="font-display font-semibold text-slate-100">Position Archive</h2>
+          </div>
+          <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white text-sm px-2 py-1 rounded bg-ink-700">✕</button>
+        </div>
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+          </svg>
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search positions…"
+            className="w-full bg-ink-850 border border-white/8 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-5">
+        {groups.length === 0 && (
+          <div className="text-center text-slate-500 text-sm py-10">No positions match “{query}”.</div>
+        )}
+        {groups.map(g => (
+          <div key={g.name}>
+            <div className="px-2 mb-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500">{g.name}</div>
+            <div className="space-y-1">
+              {g.items.map(p => {
+                const active = p.id === current;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => onPick(p.id)}
+                    className={`w-full text-left rounded-lg px-3 py-2 transition flex items-center gap-3 ${active ? "bg-indigo-500/15 ring-1 ring-indigo-400/40" : "hover:bg-ink-700/60"}`}
+                  >
+                    <RatingPip rating={p.rating} />
+                    <span className="flex-1 min-w-0">
+                      <span className={`block text-sm truncate ${active ? "text-white font-semibold" : "text-slate-200"}`}>{p.name}</span>
+                      <span className="block text-[11px] text-slate-500 truncate">{p.summary}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="p-3 border-t border-white/5 text-[11px] text-slate-500 text-center">
+        {Object.keys(POSITIONS).length} positions · {countTransitions()} transitions
+      </div>
+    </aside>
+  );
+}
+
+function RatingPip({ rating }) {
+  const isSub = rating >= 10;
+  const color =
+    isSub ? "#fb7185" :
+    rating > 2 ? "#34d399" :
+    rating > 0 ? "#86efac" :
+    rating === 0 ? "#fbbf24" :
+    rating > -3 ? "#fb923c" : "#f87171";
+  return (
+    <span className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-lg text-[11px] font-bold"
+      style={{ background: `${color}22`, color, border: `1px solid ${color}44` }}>
+      {isSub ? "★" : (rating > 0 ? `+${rating}` : rating)}
+    </span>
+  );
+}
+
+function countTransitions() {
+  return Object.values(POSITIONS).reduce((n, p) => n + p.transitions.length, 0);
+}
+
+function Breadcrumb({ history, onJump }) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap text-xs">
+      {history.map((id, i) => {
+        const p = POSITIONS[id];
+        const last = i === history.length - 1;
+        return (
+          <React.Fragment key={i}>
+            {i > 0 && <span className="text-slate-600">/</span>}
+            <button
+              onClick={() => onJump(i)}
+              className={`px-2 py-0.5 rounded-md transition ${last ? "bg-indigo-500/20 text-indigo-200 font-medium" : "text-slate-400 hover:text-slate-200 hover:bg-ink-700"}`}
+            >
+              {p ? p.name : id}
+            </button>
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//  MAIN APP
+//////////////////////////////////////////////////////////////////////////////
+
+function App() {
+  const [history, setHistory] = React.useState(["standing"]);
+  const [query, setQuery] = React.useState("");
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [animKey, setAnimKey] = React.useState(0);
+
+  const currentId = history[history.length - 1];
+  const pos = POSITIONS[currentId];
+
+  const goTo = (id, { viaArchive = false } = {}) => {
+    if (!POSITIONS[id]) return;
+    setHistory(h => (viaArchive ? [...h, id] : [...h, id]));
+    setAnimKey(k => k + 1);
+    setSidebarOpen(false);
+  };
+
+  const jumpTo = (index) => {
+    setHistory(h => h.slice(0, index + 1));
+    setAnimKey(k => k + 1);
+  };
+
+  const back = () => {
+    if (history.length > 1) { setHistory(h => h.slice(0, -1)); setAnimKey(k => k + 1); }
+  };
+
+  const reset = () => { setHistory(["standing"]); setAnimKey(k => k + 1); };
+
+  return (
+    <div className="h-full flex text-slate-200">
+      {/* ============================ SIDEBAR ============================ */}
+      <div className={`fixed lg:static inset-y-0 left-0 z-40 w-80 max-w-[85vw] glass border-r border-white/5 transform transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        <Archive
+          current={currentId}
+          query={query}
+          setQuery={setQuery}
+          onPick={(id) => goTo(id, { viaArchive: true })}
+          onClose={() => setSidebarOpen(false)}
+        />
+      </div>
+      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+
+      {/* ============================ MAIN ============================ */}
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        {/* Header */}
+        <header className="shrink-0 glass border-b border-white/5 px-4 sm:px-6 py-3 flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-lg bg-ink-700 hover:bg-ink-600">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center font-display font-bold text-white shadow-lg">B</div>
+            <div className="leading-tight">
+              <div className="font-display font-bold text-white tracking-tight">BJJFlow</div>
+              <div className="text-[10px] text-slate-500 uppercase tracking-widest">Position Flow Tree</div>
+            </div>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <button onClick={back} disabled={history.length <= 1}
+              className="text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+              <span className="hidden sm:inline">Back</span>
+            </button>
+            <button onClick={reset}
+              className="text-sm px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 transition">
+              ♻️ <span className="hidden sm:inline">Reset</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Breadcrumb path */}
+        <div className="shrink-0 px-4 sm:px-6 py-2.5 border-b border-white/5 bg-ink-900/40 flex items-center gap-3 overflow-x-auto">
+          <span className="text-[10px] uppercase tracking-widest text-slate-500 shrink-0">Flow Path</span>
+          <Breadcrumb history={history} onJump={jumpTo} />
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto grid-bg">
+          <div key={animKey} className="fade-key max-w-5xl mx-auto px-4 sm:px-6 py-6">
+            {/* Position hero */}
+            <div className="grid lg:grid-cols-2 gap-5 mb-6">
+              {/* Visual */}
+              <div className="rounded-3xl glass overflow-hidden ring-1 ring-white/5">
+                <div className="aspect-[5/3] relative">
+                  <MatScene layout={pos.layout} />
+                  <div className="absolute top-3 left-3 flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full bg-black/40 backdrop-blur text-[11px] font-medium text-slate-200 border border-white/10">
+                      {pos.group}
+                    </span>
+                    {pos.perspective !== "neutral" && (
+                      <span className="px-2.5 py-1 rounded-full bg-black/40 backdrop-blur text-[11px] font-medium border border-white/10"
+                        style={{ color: pos.perspective === "top" ? "#5b7cfa" : "#e7ebf5" }}>
+                        {pos.perspective === "top" ? "▲ Top POV" : "▼ Bottom POV"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-ink-950/90 to-transparent">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                      <span className="h-2 w-2 rounded-full bg-indigo-400 pulse-dot"/> Stylized scene · swap for AI render
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Title + gauge + image prompt */}
+              <div className="flex flex-col gap-4">
+                <div>
+                  <h1 className="font-display text-3xl sm:text-4xl font-bold text-white tracking-tight">{pos.name}</h1>
+                  <p className="text-slate-400 mt-1.5">{pos.summary}</p>
+                </div>
+                <div className="rounded-2xl glass p-4 ring-1 ring-white/5">
+                  <RatingGauge rating={pos.rating} />
+                </div>
+                <div className="rounded-2xl glass p-4 ring-1 ring-white/5">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] uppercase tracking-widest text-slate-500">AI Image Prompt</span>
+                    <CopyPrompt text={pos.imagePrompt} />
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed italic">“{pos.imagePrompt}”</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Description grid */}
+            <div className="grid sm:grid-cols-2 gap-4 mb-7">
+              <InfoCard icon="🧭" title="Alignment" body={pos.alignment} className="sm:col-span-2" />
+              <InfoCard icon="🔺" title="Top / Dominant Objective" body={pos.top} accent="indigo" />
+              <InfoCard icon="🔻" title="Bottom / Recovery Objective" body={pos.bottom} accent="emerald" />
+              <InfoCard icon="✊" title="Common Grips & Controls" body={pos.grips} className="sm:col-span-2" accent="amber" />
+            </div>
+
+            {/* Transitions */}
+            <div className="mb-2 flex items-center gap-3">
+              <h2 className="font-display text-lg font-semibold text-white">Available Actions</h2>
+              <span className="text-xs text-slate-500">{pos.transitions.length} transitions — click to freeze & pivot</span>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3 pb-10">
+              {pos.transitions.map((t, i) => (
+                <TransitionCard key={i} t={t} onClick={() => goTo(t.to)} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function InfoCard({ icon, title, body, className = "", accent }) {
+  const accents = {
+    indigo: "from-indigo-500/10", emerald: "from-emerald-500/10",
+    amber: "from-amber-500/10", default: "from-white/5",
+  };
+  return (
+    <div className={`rounded-2xl glass ring-1 ring-white/5 p-4 bg-gradient-to-br ${accents[accent] || accents.default} to-transparent ${className}`}>
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="text-base">{icon}</span>
+        <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{title}</h3>
+      </div>
+      <p className="text-sm text-slate-300 leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
