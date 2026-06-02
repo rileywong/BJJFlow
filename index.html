@@ -2118,7 +2118,7 @@ function CopyPrompt({ text }) {
   );
 }
 
-function Archive({ current, query, setQuery, onPick, onClose, favorites = [], onToggleFav, savedFlows = [], onLoadFlow, onDeleteFlow, learned = [] }) {
+function Archive({ current, query, setQuery, onPick, onClose, favorites = [], onToggleFav, savedFlows = [], onLoadFlow, onDeleteFlow, learned = [], tools = [] }) {
   const learnedSet = new Set(learned);
   const q = query.trim().toLowerCase();
   const match = (p) => !q || p.name.toLowerCase().includes(q) || p.summary.toLowerCase().includes(q) || p.group.toLowerCase().includes(q);
@@ -2172,6 +2172,20 @@ function Archive({ current, query, setQuery, onPick, onClose, favorites = [], on
             className="w-full bg-ink-850 border border-white/8 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
           />
         </div>
+        {tools.length > 0 && (
+          <div className="lg:hidden mt-3">
+            <div className="px-1 mb-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500">Labs &amp; Tools</div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {tools.map(t => (
+                <button key={t.label} onClick={t.fn}
+                  className="flex flex-col items-center gap-1 rounded-lg bg-ink-800/60 hover:bg-ink-700 ring-1 ring-white/5 py-2 transition">
+                  <span className="text-lg leading-none">{t.icon}</span>
+                  <span className="text-[10px] text-slate-300">{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-5">
@@ -2810,13 +2824,15 @@ function SettingsModal({ settings, onChange, onClose }) {
 //  DASHBOARD — progress, drill accuracy, plan coverage, shortcuts
 //////////////////////////////////////////////////////////////////////////////
 
-function DashboardModal({ learned, favorites, savedFlows, plans, activePlan, drillAgg, onJump, onClose }) {
+function DashboardModal({ learned, favorites, savedFlows, plans, activePlan, drillAgg, sessions = [], onExport, onJump, onClose }) {
   const all = Object.values(POSITIONS);
   const learnedSet = new Set(learned);
   const groups = ["Neutral", "Guard", "Half Guard", "Side Control", "Mount", "Back Control", "Turtle", "Leg Entanglements", "Submissions"];
   const overall = Math.round((learned.length / all.length) * 100);
   const acc = drillAgg.seen ? Math.round((drillAgg.correct / drillAgg.seen) * 100) : 0;
   const coverage = activePlan ? Object.keys(activePlan.picks).length : 0;
+  const weekAgo = Date.now() - 7 * 864e5;
+  const sessionsThisWeek = sessions.filter(s => new Date(s.date).getTime() >= weekAgo).length;
 
   const Stat = ({ label, value, sub }) => (
     <div className="rounded-2xl glass ring-1 ring-white/5 p-4">
@@ -2831,16 +2847,32 @@ function DashboardModal({ learned, favorites, savedFlows, plans, activePlan, dri
     <div className="fixed inset-0 z-50 flex flex-col bg-ink-950/85 backdrop-blur-sm">
       <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3">
         <span className="text-lg">📊</span><h2 className="font-display font-semibold text-white">Your Dashboard</h2>
-        <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+        {onExport && <button onClick={onExport} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">📄 Export / Print</button>}
+        <button onClick={onClose} className={`text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200 ${onExport ? "" : "ml-auto"}`}>Close ✕</button>
       </div>
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Stat label="Positions learned" value={`${overall}%`} sub={`${learned.length} / ${all.length}`} />
             <Stat label="Drill accuracy" value={`${acc}%`} sub={`${drillAgg.seen} answered`} />
+            <Stat label="Sessions logged" value={sessions.length} sub={`${sessionsThisWeek} this week`} />
             <Stat label="Active plan moves" value={coverage} sub={activePlan ? activePlan.name : "no active plan"} />
-            <Stat label="Saved flows" value={savedFlows.length} sub={`${favorites.length} favorites`} />
           </div>
+
+          {sessions.length > 0 && (
+            <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Recent Sessions</h3>
+              <div className="space-y-1.5">
+                {sessions.slice(0, 6).map(s => (
+                  <div key={s.id} className="flex items-center gap-3 text-sm rounded-lg bg-ink-800/50 px-3 py-2">
+                    <span className="text-slate-500 text-xs font-mono w-20 shrink-0">{s.date}</span>
+                    <span className="text-slate-200">{s.length} min</span>
+                    <span className="text-slate-500 text-xs truncate flex-1">{(s.focus || []).slice(0, 3).join(" · ")}{(s.focus || []).length > 3 ? " …" : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
             <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Learning Progress by Category</h3>
@@ -2913,7 +2945,7 @@ function TrainingCard({ id, onOpen }) {
   );
 }
 
-function TrainingModal({ currentId, activePlan, defaultStyle, onJump, onClose, onOpenAthlete }) {
+function TrainingModal({ currentId, activePlan, defaultStyle, onJump, onClose, onOpenAthlete, onLogSession }) {
   const [tab, setTab] = React.useState("position");
   const styleKeys = Object.keys(PLAYSTYLE_TRAINING);
   const [style, setStyle] = React.useState(defaultStyle && PLAYSTYLE_TRAINING[defaultStyle] ? defaultStyle : styleKeys[0]);
@@ -2929,6 +2961,7 @@ function TrainingModal({ currentId, activePlan, defaultStyle, onJump, onClose, o
   const [seed, setSeed] = React.useState(1);
   const [copied, setCopied] = React.useState(false);
   const [includeMobility, setIncludeMobility] = React.useState(true);
+  const [logged, setLogged] = React.useState(false);
   const focusIds = source === "plan" ? planPicks
     : source === "current" ? [currentId, ...pos.transitions.filter(t => POSITIONS[t.to] && POSITIONS[t.to].group !== "Submissions").slice(0, 3).map(t => t.to)]
     : ps.keyPositions;
@@ -3023,8 +3056,12 @@ function TrainingModal({ currentId, activePlan, defaultStyle, onJump, onClose, o
                 <button onClick={() => setSource("current")}
                   className={`text-xs px-3 py-1.5 rounded-lg transition ${source === "current" ? "bg-indigo-500/25 text-indigo-100 ring-1 ring-indigo-400/40" : "bg-ink-700 text-slate-400 hover:bg-ink-600"}`}>This Position</button>
                 <div className="ml-auto flex gap-2">
-                  <button onClick={() => setSeed(s => s + 1)} className="text-xs px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-300">🎲 Regenerate</button>
-                  <button onClick={copySession} className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/30">{copied ? "✓ Copied" : "📋 Copy session"}</button>
+                  <button onClick={() => { setSeed(s => s + 1); setLogged(false); }} className="text-xs px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-300">🎲 Regenerate</button>
+                  <button onClick={copySession} className="text-xs px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-300 border border-white/5">{copied ? "✓ Copied" : "📋 Copy"}</button>
+                  {onLogSession && (
+                    <button onClick={() => { const ids = (focusIds.length ? focusIds : [currentId]); onLogSession({ length, source, focusIds: ids, focus: ids.map(id => POSITIONS[id] && POSITIONS[id].name).filter(Boolean), blocks: session.map(b => ({ name: b.name, mins: b.mins })) }); setLogged(true); setTimeout(() => setLogged(false), 1800); }}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/30">{logged ? "✓ Logged" : "✓ Log session"}</button>
+                  )}
                 </div>
               </div>
               <button onClick={() => setIncludeMobility(v => !v)}
@@ -3402,7 +3439,16 @@ function App() {
   const [seen, setSeen] = useLocalStorage("bjjflow:seen", false);
   const [welcomeOpen, setWelcomeOpen] = React.useState(!seen);
   const [toolsOpen, setToolsOpen] = React.useState(false);
+  const [sessions, setSessions] = useLocalStorage("bjjflow:sessions", []);
   const dismissWelcome = () => { setSeen(true); setWelcomeOpen(false); };
+
+  const logSession = (entry) => {
+    setSessions(s => [{ id: Date.now(), date: new Date().toISOString().slice(0, 10), ...entry }, ...s].slice(0, 60));
+    // Feed spaced repetition: a light "practiced" bump on each focus position.
+    if (entry.focusIds && entry.focusIds.length) {
+      setSrs(prev => { const n = { ...prev }; entry.focusIds.forEach(id => { const c = n[id] || { box: 1, seen: 0, correct: 0 }; n[id] = { box: Math.min(c.box + 1, 5), seen: c.seen + 1, correct: c.correct + 1 }; }); return n; });
+    }
+  };
 
   const setVideo = (id, url) => setVideos(v => (url ? { ...v, [id]: url } : (() => { const n = { ...v }; delete n[id]; return n; })()));
   const clearVideo = (id) => setVideos(v => { const n = { ...v }; delete n[id]; return n; });
@@ -3477,6 +3523,38 @@ function App() {
     setHistory(chain); setAnimKey(k => k + 1); setPlansOpen(false);
   };
   const setNote = (posId, text) => setNotes(n => ({ ...n, [posId]: text }));
+
+  // One-tap printable program: game plan + weekly plan + a sample session.
+  const exportProgram = () => {
+    const plan = activePlan;
+    const focus = plan && Object.keys(plan.picks).length ? Object.keys(plan.picks) : ["standing", currentId];
+    const session = buildSession(focus, 60, Math.floor(Math.random() * 9999) + 1, true);
+    const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const planSection = plan && Object.keys(plan.picks).length
+      ? `<table><thead><tr><th>Position</th><th>My go-to</th></tr></thead><tbody>${Object.entries(plan.picks).map(([pid, label]) => `<tr><td>${esc(POSITIONS[pid] ? POSITIONS[pid].name : pid)}</td><td>${esc(label)}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="muted">No active game plan — open Plans to build one.</p>`;
+    const weekSection = `<table><tbody>${WEEKLY.map(d => `<tr><td class="day">${d.d} <span class="tag">${d.tag}</span></td><td>${d.items.map(esc).join(" · ")}</td></tr>`).join("")}</tbody></table><p class="muted">${esc(WEEKLY_NOTE)}</p>`;
+    const sessionSection = session.map(b => `<div class="block"><h4>${esc(b.name)} <span class="muted">— ${b.mins} min</span></h4><ul>${b.items.map(it => `<li>${esc(it.name)}${it.reps ? ` <em>(${esc(it.reps)})</em>` : ""}</li>`).join("")}</ul></div>`).join("");
+    const doc = `<!doctype html><html><head><meta charset="utf-8"><title>BJJFlow — My Program</title><style>
+      *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Inter,sans-serif;max-width:820px;margin:24px auto;padding:0 20px;color:#111;line-height:1.5}
+      h1{margin:0 0 2px;font-size:26px} h2{margin:26px 0 8px;border-bottom:2px solid #6366f1;padding-bottom:4px;font-size:18px} h4{margin:10px 0 4px}
+      .sub{color:#666;margin:0 0 8px} table{width:100%;border-collapse:collapse;margin:6px 0} th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:14px;vertical-align:top}
+      th{background:#f3f4f6} .muted{color:#777;font-size:13px} .tag{font-size:10px;background:#eef2ff;color:#4338ca;padding:1px 6px;border-radius:8px;margin-left:4px} .day{white-space:nowrap;font-weight:600;width:120px}
+      .block{break-inside:avoid;margin:4px 0} ul{margin:4px 0 0 18px} em{color:#555} .toolbar{margin:0 0 12px} button{font-size:14px;padding:8px 14px;border:0;border-radius:8px;background:#6366f1;color:#fff;cursor:pointer}
+      @media print{.toolbar{display:none}}
+    </style></head><body>
+      <div class="toolbar"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+      <h1>BJJFlow — My Program</h1>
+      <p class="sub">${plan ? esc(plan.name) + " · " + esc(plan.style) + " style" : "General program"} · generated ${new Date().toLocaleDateString()}</p>
+      <h2>Game Plan — my A-game</h2>${planSection}
+      <h2>Weekly Training Split</h2>${weekSection}
+      <h2>Sample ~60-min Session</h2>${sessionSection}
+      <p class="muted" style="margin-top:24px">Generated by BJJFlow. Training content is general guidance — scale to your level and tap early.</p>
+    </body></html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(doc); w.document.close(); }
+    else { const blob = new Blob([doc], { type: "text/html" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "bjjflow-program.html"; a.click(); }
+  };
 
   const toggleFav = (id) =>
     setFavorites(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
@@ -3584,6 +3662,16 @@ function App() {
           onLoadFlow={loadFlow}
           onDeleteFlow={deleteFlow}
           learned={learned}
+          tools={[
+            { icon: "🥋", label: "Train", fn: () => { setTrainOpen(true); setSidebarOpen(false); } },
+            { icon: "💪", label: "Athlete", fn: () => { setAthleteOpen(true); setSidebarOpen(false); } },
+            { icon: "🎯", label: "Drill", fn: () => { setDrillOpen(true); setSidebarOpen(false); } },
+            { icon: "🧠", label: "Plans", fn: () => { setPlansOpen(true); setSidebarOpen(false); } },
+            { icon: "🗺️", label: "Map", fn: () => { setMapOpen(true); setSidebarOpen(false); } },
+            { icon: "📊", label: "Stats", fn: () => { setDashOpen(true); setSidebarOpen(false); } },
+            { icon: "📄", label: "Export", fn: () => { exportProgram(); setSidebarOpen(false); } },
+            { icon: "⚙️", label: "Settings", fn: () => { setSettingsOpen(true); setSidebarOpen(false); } },
+          ]}
         />
       </div>
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
@@ -3629,6 +3717,7 @@ function App() {
                       { icon: "🧠", label: "Game Plans", hint: "P", fn: () => setPlansOpen(true) },
                       { icon: "🗺️", label: "Flow Map", hint: "M", fn: () => setMapOpen(true) },
                       { icon: "📊", label: "Dashboard", hint: "S", fn: () => setDashOpen(true) },
+                      { icon: "📄", label: "Export / Print", hint: "", fn: exportProgram },
                       { icon: "⚙️", label: "Settings", hint: "", fn: () => setSettingsOpen(true) },
                       { icon: "❓", label: "Guide / intro", hint: "?", fn: () => setWelcomeOpen(true) },
                     ].map(it => (
@@ -3667,10 +3756,10 @@ function App() {
             </button>
           )}
           <div className="ml-auto shrink-0 flex items-center gap-2">
-            {(score.points > 0 || score.finish) && (
-              <span className="text-xs px-2.5 py-1 rounded-md bg-emerald-500/15 text-emerald-200 border border-emerald-400/30 font-semibold"
+            {history.length > 1 && (
+              <span className={`text-xs px-2.5 py-1 rounded-md font-bold border ${score.finish ? "bg-rose-500/20 text-rose-200 border-rose-400/40" : "bg-emerald-500/15 text-emerald-200 border-emerald-400/30"}`}
                 title="Approx. IBJJF points scored along this flow path">
-                {score.finish ? "🏁 SUB win" : `${score.points} pts`}
+                {score.finish ? "🏁 SUB · WIN" : `🏅 ${score.points} pts`}
               </span>
             )}
             <select value={ruleset} onChange={e => setRuleset(e.target.value)} title="Competition ruleset"
@@ -3808,13 +3897,14 @@ function App() {
       {settingsOpen && <SettingsModal settings={settings} onChange={setSettings} onClose={() => setSettingsOpen(false)} />}
 
       {dashOpen && <DashboardModal learned={learned} favorites={favorites} savedFlows={savedFlows}
-        plans={plans} activePlan={activePlan} drillAgg={drillAgg}
+        plans={plans} activePlan={activePlan} drillAgg={drillAgg} sessions={sessions} onExport={exportProgram}
         onJump={(id) => { goTo(id, { viaArchive: true }); setDashOpen(false); }}
         onClose={() => setDashOpen(false)} />}
 
       {trainOpen && <TrainingModal currentId={currentId} activePlan={activePlan} defaultStyle={activePlan ? activePlan.style : null}
         onJump={(id) => { goTo(id, { viaArchive: true }); setTrainOpen(false); }}
         onOpenAthlete={() => { setTrainOpen(false); setAthleteOpen(true); }}
+        onLogSession={logSession}
         onClose={() => setTrainOpen(false)} />}
 
       {athleteOpen && <ConditioningModal onClose={() => setAthleteOpen(false)} />}
