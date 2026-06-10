@@ -2310,6 +2310,51 @@ function useLocalStorage(key, initial) {
   return [val, setVal];
 }
 
+// Every localStorage key the app owns — used by backup / restore / reset.
+const DATA_KEYS = [
+  "bjjflow:favs", "bjjflow:flows", "bjjflow:notes", "bjjflow:plans", "bjjflow:activePlan",
+  "bjjflow:ruleset", "bjjflow:learned", "bjjflow:settings", "bjjflow:srs", "bjjflow:drillAgg",
+  "bjjflow:videos", "bjjflow:sessions", "bjjflow:profile", "bjjflow:seen",
+];
+function exportData() {
+  const data = {};
+  DATA_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v != null) data[k] = v; });
+  const payload = { app: "BJJFlow", version: 1, exported: new Date().toISOString(), data };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `bjjflow-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+}
+function importData(file, done) {
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const parsed = JSON.parse(r.result);
+      const data = parsed.data || parsed;
+      Object.entries(data).forEach(([k, v]) => {
+        if (k.indexOf("bjjflow:") === 0) localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));
+      });
+      done(true);
+    } catch (e) { done(false); }
+  };
+  r.readAsText(file);
+}
+function resetData() { DATA_KEYS.forEach(k => localStorage.removeItem(k)); }
+
+// Belt presets (adult ranks).
+const BELTS = {
+  White: "#e7ebf5", Blue: "#3b82f6", Purple: "#8b5cf6", Brown: "#92400e", Black: "#111827",
+};
+// ISO-week key (YYYY-Www) for streak/heatmap grouping.
+function weekKey(d) {
+  const dt = new Date(d); dt.setHours(0, 0, 0, 0);
+  dt.setDate(dt.getDate() + 4 - (dt.getDay() || 7));
+  const yearStart = new Date(dt.getFullYear(), 0, 1);
+  const wk = Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
+  return `${dt.getFullYear()}-W${String(wk).padStart(2, "0")}`;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //  GLOBAL MAP — the whole tree at a glance (tech-tree overview)
 //  Columns = groups, x-ordered; nodes colored by rating; edges = transitions.
@@ -2794,6 +2839,8 @@ function CommandPalette({ onPick, onClose }) {
 //////////////////////////////////////////////////////////////////////////////
 
 function SettingsModal({ settings, onChange, onClose }) {
+  const [msg, setMsg] = React.useState("");
+  const fileRef = React.useRef(null);
   const Toggle = ({ k, label, desc }) => (
     <button onClick={() => onChange({ ...settings, [k]: !settings[k] })}
       className="w-full flex items-center gap-3 rounded-xl bg-ink-800/60 ring-1 ring-white/5 p-4 text-left hover:bg-ink-700/60 transition">
@@ -2805,7 +2852,7 @@ function SettingsModal({ settings, onChange, onClose }) {
   );
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-ink-950/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md glass rounded-2xl ring-1 ring-white/10 p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-md glass rounded-2xl ring-1 ring-white/10 p-5 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 mb-4">
           <span className="text-lg">⚙️</span><h2 className="font-display font-semibold text-white">Settings</h2>
           <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
@@ -2814,6 +2861,21 @@ function SettingsModal({ settings, onChange, onClose }) {
           <Toggle k="colorblind" label="Colorblind-safe colors" desc="Blue/orange rating palette instead of green/red." />
           <Toggle k="reduceMotion" label="Reduce motion" desc="Disable transitions and entrance animations." />
           <Toggle k="showPoints" label="Show IBJJF points" desc="Display point values on scoring actions." />
+        </div>
+        <div className="mt-5 pt-4 border-t border-white/10">
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Your Data</h3>
+          <p className="text-xs text-slate-500 mb-3">Everything lives in this browser. Back it up to a file to keep it safe or move it to another device.</p>
+          <div className="grid grid-cols-3 gap-2">
+            <button onClick={() => { exportData(); setMsg("Backup downloaded ✓"); }}
+              className="text-xs px-2 py-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 transition">⬇ Export</button>
+            <button onClick={() => fileRef.current && fileRef.current.click()}
+              className="text-xs px-2 py-2 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200 border border-white/5 transition">⬆ Import</button>
+            <button onClick={() => { if (window.confirm("Erase all BJJFlow data on this device? This can't be undone.")) { resetData(); location.reload(); } }}
+              className="text-xs px-2 py-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-400/30 transition">✕ Reset</button>
+          </div>
+          <input ref={fileRef} type="file" accept="application/json,.json" className="hidden"
+            onChange={e => { const f = e.target.files[0]; if (f) importData(f, ok => ok ? location.reload() : setMsg("Couldn't read that file.")); }} />
+          {msg && <p className="text-[11px] text-slate-400 mt-2">{msg}</p>}
         </div>
       </div>
     </div>
@@ -3408,6 +3470,140 @@ function ConditioningModal({ onClose }) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//  JOURNAL — belt/profile, weekly goal, streak, heatmap & class log
+//////////////////////////////////////////////////////////////////////////////
+
+function JournalModal({ profile, setProfile, entries, onLog, onDelete, onClose }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = React.useState({ date: today, type: "Gi", length: 60, rounds: 5, note: "" });
+  const goal = profile.weeklyGoal || 3;
+  const thisWeek = entries.filter(e => weekKey(e.date) === weekKey(today)).length;
+  const totalHours = Math.round(entries.reduce((n, e) => n + (e.length || e.minutes || 0), 0) / 60);
+
+  // training streak in weeks (grace for an untrained current week)
+  const weeks = new Set(entries.map(e => weekKey(e.date)));
+  let streak = 0; const d = new Date(today);
+  if (!weeks.has(weekKey(d))) d.setDate(d.getDate() - 7);
+  while (weeks.has(weekKey(d))) { streak++; d.setDate(d.getDate() - 7); }
+
+  // heatmap: last 12 weeks
+  const countByDate = {}; entries.forEach(e => { countByDate[e.date] = (countByDate[e.date] || 0) + 1; });
+  const start = new Date(today); start.setDate(start.getDate() - (((start.getDay() || 7) - 1)) - 11 * 7);
+  const cols = []; for (let w = 0; w < 12; w++) { const days = []; for (let dd = 0; dd < 7; dd++) { const dt = new Date(start); dt.setDate(start.getDate() + w * 7 + dd); days.push(dt.toISOString().slice(0, 10)); } cols.push(days); }
+  const heatColor = (n) => n >= 3 ? "#34d399" : n === 2 ? "#10b981" : n === 1 ? "#0f766e" : "#1c2438";
+
+  const beltColor = BELTS[profile.belt] || "#e7ebf5";
+  const Ring = () => { const r = 26, c = 2 * Math.PI * r, pct = Math.min(1, thisWeek / goal); return (
+    <svg width="68" height="68" className="-rotate-90"><circle cx="34" cy="34" r={r} fill="none" stroke="#27314a" strokeWidth="7" /><circle cx="34" cy="34" r={r} fill="none" stroke={thisWeek >= goal ? "#34d399" : "#6366f1"} strokeWidth="7" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} /></svg>
+  ); };
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink-950/85 backdrop-blur-sm">
+      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3">
+        <span className="text-lg">📒</span><h2 className="font-display font-semibold text-white">Training Journal</h2>
+        <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+
+          {/* Profile */}
+          <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="h-12 w-12 rounded-xl flex items-center justify-center shadow-inner shrink-0" style={{ background: beltColor, border: "2px solid rgba(255,255,255,.15)" }}>
+                <div className="flex gap-0.5">{[0, 1, 2, 3].map(i => <span key={i} className="h-5 w-1 rounded-sm" style={{ background: i < profile.stripes ? (profile.belt === "Black" ? "#ef4444" : "#111827") : "rgba(255,255,255,.18)" }} />)}</div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.keys(BELTS).map(b => (
+                  <button key={b} onClick={() => setProfile({ ...profile, belt: b })}
+                    className={`text-xs px-2.5 py-1.5 rounded-lg border transition ${profile.belt === b ? "ring-2 ring-indigo-400/60 text-white" : "text-slate-300 border-white/5 hover:bg-ink-700"}`}
+                    style={{ background: profile.belt === b ? "rgba(99,102,241,.18)" : "" }}>{b}</button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-500 mr-1">Stripes</span>
+                {[0, 1, 2, 3, 4].map(n => (
+                  <button key={n} onClick={() => setProfile({ ...profile, stripes: n })}
+                    className={`h-6 w-6 rounded text-[11px] ${profile.stripes === n ? "bg-indigo-500 text-white" : "bg-ink-700 text-slate-400 hover:bg-ink-600"}`}>{n}</button>
+                ))}
+              </div>
+              <label className="text-xs text-slate-400 flex items-center gap-2 ml-auto">Training since
+                <input type="date" value={profile.since || ""} onChange={e => setProfile({ ...profile, since: e.target.value })}
+                  className="bg-ink-850 border border-white/10 rounded-lg px-2 py-1 text-slate-200" />
+              </label>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-2xl glass ring-1 ring-white/5 p-4 flex items-center gap-3">
+              <div className="relative"><Ring /><span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white">{thisWeek}/{goal}</span></div>
+              <div><div className="text-xs text-slate-400">This week</div>
+                <div className="flex items-center gap-1 mt-1">
+                  <button onClick={() => setProfile({ ...profile, weeklyGoal: Math.max(1, goal - 1) })} className="h-5 w-5 rounded bg-ink-700 text-slate-300 text-xs">−</button>
+                  <span className="text-[11px] text-slate-500">goal {goal}</span>
+                  <button onClick={() => setProfile({ ...profile, weeklyGoal: goal + 1 })} className="h-5 w-5 rounded bg-ink-700 text-slate-300 text-xs">+</button>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl glass ring-1 ring-white/5 p-4"><div className="text-3xl font-display font-bold text-white">🔥 {streak}</div><div className="text-xs text-slate-400 mt-0.5">week streak</div></div>
+            <div className="rounded-2xl glass ring-1 ring-white/5 p-4"><div className="text-3xl font-display font-bold text-white">{entries.length}</div><div className="text-xs text-slate-400 mt-0.5">sessions logged</div></div>
+            <div className="rounded-2xl glass ring-1 ring-white/5 p-4"><div className="text-3xl font-display font-bold text-white">{totalHours}h</div><div className="text-xs text-slate-400 mt-0.5">mat time</div></div>
+          </div>
+
+          {/* Heatmap */}
+          <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Consistency — last 12 weeks</h3>
+            <div className="flex gap-1">
+              {cols.map((days, ci) => (
+                <div key={ci} className="flex flex-col gap-1">
+                  {days.map(ds => (
+                    <div key={ds} title={`${ds}: ${countByDate[ds] || 0} session(s)`} className="h-3 w-3 rounded-sm" style={{ background: heatColor(countByDate[ds] || 0) }} />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick log */}
+          <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Log a class</h3>
+            <div className="flex flex-wrap gap-2 items-end">
+              <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="bg-ink-850 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-slate-200" />
+              <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="bg-ink-850 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-slate-200">
+                {["Gi", "No-Gi", "Open Mat", "Competition", "Drilling", "Private"].map(t => <option key={t}>{t}</option>)}
+              </select>
+              <label className="text-xs text-slate-500 flex items-center gap-1">min <input type="number" value={form.length} onChange={e => setForm({ ...form, length: e.target.value })} className="w-16 bg-ink-850 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-slate-200" /></label>
+              <label className="text-xs text-slate-500 flex items-center gap-1">rounds <input type="number" value={form.rounds} onChange={e => setForm({ ...form, rounds: e.target.value })} className="w-14 bg-ink-850 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-slate-200" /></label>
+              <input value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} placeholder="What worked / what to fix…" className="flex-1 min-w-[160px] bg-ink-850 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder-slate-600" />
+              <button onClick={() => { onLog({ date: form.date, type: form.type, length: Number(form.length) || 60, rounds: Number(form.rounds) || 0, note: form.note }); setForm({ ...form, note: "" }); }}
+                className="text-sm px-4 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold transition">Log it</button>
+            </div>
+          </div>
+
+          {/* Recent entries */}
+          {entries.length > 0 && (
+            <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Log</h3>
+              <div className="space-y-1.5">
+                {entries.slice(0, 12).map(e => (
+                  <div key={e.id} className="group/e flex items-center gap-3 text-sm rounded-lg bg-ink-800/50 px-3 py-2">
+                    <span className="text-slate-500 text-xs font-mono w-20 shrink-0">{e.date}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-ink-700 text-slate-300 shrink-0">{e.type || "Session"}</span>
+                    <span className="text-slate-300 shrink-0">{e.length || e.minutes || "?"} min</span>
+                    <span className="text-slate-500 text-xs truncate flex-1">{e.note || (e.focus ? e.focus.slice(0, 3).join(" · ") : "")}</span>
+                    <button onClick={() => onDelete(e.id)} className="shrink-0 px-1.5 text-slate-600 hover:text-rose-300 opacity-0 group-hover/e:opacity-100 transition">✕</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //  MAIN APP
 //////////////////////////////////////////////////////////////////////////////
 
@@ -3440,7 +3636,12 @@ function App() {
   const [welcomeOpen, setWelcomeOpen] = React.useState(!seen);
   const [toolsOpen, setToolsOpen] = React.useState(false);
   const [sessions, setSessions] = useLocalStorage("bjjflow:sessions", []);
+  const [profile, setProfile] = useLocalStorage("bjjflow:profile", { belt: "White", stripes: 0, since: "", weeklyGoal: 3, name: "" });
+  const [journalOpen, setJournalOpen] = React.useState(false);
   const dismissWelcome = () => { setSeen(true); setWelcomeOpen(false); };
+
+  const addLog = (entry) => setSessions(s => [{ id: Date.now(), ...entry }, ...s].slice(0, 200));
+  const deleteSession = (id) => setSessions(s => s.filter(e => e.id !== id));
 
   const logSession = (entry) => {
     setSessions(s => [{ id: Date.now(), date: new Date().toISOString().slice(0, 10), ...entry }, ...s].slice(0, 60));
@@ -3616,10 +3817,10 @@ function App() {
     const onKey = (e) => {
       const tag = (e.target.tagName || "").toLowerCase();
       const typing = tag === "input" || tag === "textarea" || e.target.isContentEditable;
-      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen;
+      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen;
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setCmdkOpen(v => !v); return; }
       if (typing) return;
-      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); return; }
+      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); return; }
       if (anyModal) return;
       if (/^[1-9]$/.test(e.key)) { const t = pos.transitions[+e.key - 1]; if (t) goTo(t.to); return; }
       switch (e.key.toLowerCase()) {
@@ -3630,6 +3831,7 @@ function App() {
         case "d": setDrillOpen(true); break;
         case "t": setTrainOpen(true); break;
         case "w": setAthleteOpen(true); break;
+        case "j": setJournalOpen(true); break;
         case "s": setDashOpen(true); break;
         case "?": setWelcomeOpen(true); break;
         case "f": toggleFav(currentId); break;
@@ -3638,7 +3840,7 @@ function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, trainOpen, athleteOpen, welcomeOpen, history]); // eslint-disable-line
+  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, trainOpen, athleteOpen, welcomeOpen, journalOpen, history]); // eslint-disable-line
 
   // Flow polish: when the position changes, scroll the content back to the top
   // so each new position opens at its hero, not wherever you last scrolled.
@@ -3667,6 +3869,7 @@ function App() {
             { icon: "💪", label: "Athlete", fn: () => { setAthleteOpen(true); setSidebarOpen(false); } },
             { icon: "🎯", label: "Drill", fn: () => { setDrillOpen(true); setSidebarOpen(false); } },
             { icon: "🧠", label: "Plans", fn: () => { setPlansOpen(true); setSidebarOpen(false); } },
+            { icon: "📒", label: "Journal", fn: () => { setJournalOpen(true); setSidebarOpen(false); } },
             { icon: "🗺️", label: "Map", fn: () => { setMapOpen(true); setSidebarOpen(false); } },
             { icon: "📊", label: "Stats", fn: () => { setDashOpen(true); setSidebarOpen(false); } },
             { icon: "📄", label: "Export", fn: () => { exportProgram(); setSidebarOpen(false); } },
@@ -3716,6 +3919,7 @@ function App() {
                       { icon: "🎯", label: "Drill & Quiz", hint: "D", fn: () => setDrillOpen(true) },
                       { icon: "🧠", label: "Game Plans", hint: "P", fn: () => setPlansOpen(true) },
                       { icon: "🗺️", label: "Flow Map", hint: "M", fn: () => setMapOpen(true) },
+                      { icon: "📒", label: "Training Journal", hint: "J", fn: () => setJournalOpen(true) },
                       { icon: "📊", label: "Dashboard", hint: "S", fn: () => setDashOpen(true) },
                       { icon: "📄", label: "Export / Print", hint: "", fn: exportProgram },
                       { icon: "⚙️", label: "Settings", hint: "", fn: () => setSettingsOpen(true) },
@@ -3910,6 +4114,9 @@ function App() {
       {athleteOpen && <ConditioningModal onClose={() => setAthleteOpen(false)} />}
 
       {welcomeOpen && <WelcomeModal onClose={dismissWelcome} />}
+
+      {journalOpen && <JournalModal profile={profile} setProfile={setProfile} entries={sessions}
+        onLog={addLog} onDelete={deleteSession} onClose={() => setJournalOpen(false)} />}
     </div>
   );
 }
