@@ -2314,8 +2314,10 @@ function useLocalStorage(key, initial) {
 const DATA_KEYS = [
   "bjjflow:favs", "bjjflow:flows", "bjjflow:notes", "bjjflow:plans", "bjjflow:activePlan",
   "bjjflow:ruleset", "bjjflow:learned", "bjjflow:settings", "bjjflow:srs", "bjjflow:drillAgg",
-  "bjjflow:videos", "bjjflow:sessions", "bjjflow:profile", "bjjflow:seen",
+  "bjjflow:videos", "bjjflow:sessions", "bjjflow:profile", "bjjflow:seen", "bjjflow:promotions", "bjjflow:rolls",
 ];
+// Submission names (for the roll log tags), derived from the position graph.
+const SUB_NAMES = [...new Set(Object.values(POSITIONS).filter(p => p.group === "Submissions").map(p => p.name.replace(/\s*\(.*\)/, "").replace(/\s*\/.*/, "").trim()))];
 function exportData() {
   const data = {};
   DATA_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v != null) data[k] = v; });
@@ -2346,6 +2348,15 @@ function resetData() { DATA_KEYS.forEach(k => localStorage.removeItem(k)); }
 const BELTS = {
   White: "#e7ebf5", Blue: "#3b82f6", Purple: "#8b5cf6", Brown: "#92400e", Black: "#111827",
 };
+// Human duration between two ms timestamps (for time-in-rank).
+function fmtDur(ms) {
+  const d = Math.max(0, Math.floor(ms / 86400000));
+  if (d < 31) return d + "d";
+  const mo = Math.floor(d / 30.44);
+  if (mo < 12) return mo + "mo";
+  const y = Math.floor(mo / 12), rem = mo % 12;
+  return y + "y" + (rem ? ` ${rem}mo` : "");
+}
 // ISO-week key (YYYY-Www) for streak/heatmap grouping.
 function weekKey(d) {
   const dt = new Date(d); dt.setHours(0, 0, 0, 0);
@@ -3007,8 +3018,8 @@ function TrainingCard({ id, onOpen }) {
   );
 }
 
-function TrainingModal({ currentId, activePlan, defaultStyle, onJump, onClose, onOpenAthlete, onLogSession }) {
-  const [tab, setTab] = React.useState("position");
+function TrainingModal({ currentId, activePlan, defaultStyle, defaultTab, onJump, onClose, onOpenAthlete, onLogSession }) {
+  const [tab, setTab] = React.useState(defaultTab || "position");
   const styleKeys = Object.keys(PLAYSTYLE_TRAINING);
   const [style, setStyle] = React.useState(defaultStyle && PLAYSTYLE_TRAINING[defaultStyle] ? defaultStyle : styleKeys[0]);
   const tr = trainingFor(currentId);
@@ -3473,9 +3484,24 @@ function ConditioningModal({ onClose }) {
 //  JOURNAL — belt/profile, weekly goal, streak, heatmap & class log
 //////////////////////////////////////////////////////////////////////////////
 
-function JournalModal({ profile, setProfile, entries, onLog, onDelete, onClose }) {
+function JournalModal({ profile, setProfile, entries, onLog, onDelete, promotions = [], onAddPromotion, onDeletePromotion, rolls = [], onAddRoll, onDeleteRoll, onClose }) {
   const today = new Date().toISOString().slice(0, 10);
+  const [tab, setTab] = React.useState("overview");
   const [form, setForm] = React.useState({ date: today, type: "Gi", length: 60, rounds: 5, note: "" });
+  const [roll, setRoll] = React.useState({ date: today, partner: "", hit: [], taken: [], note: "" });
+  const [promo, setPromo] = React.useState({ date: today, belt: profile.belt, stripes: 0, note: "" });
+  const tabBtn = (id, label) => (
+    <button onClick={() => setTab(id)} className={`text-sm px-3.5 py-1.5 rounded-lg transition ${tab === id ? "bg-indigo-500/25 text-indigo-100 ring-1 ring-indigo-400/40" : "bg-ink-700 text-slate-400 hover:bg-ink-600"}`}>{label}</button>
+  );
+  // roll stats
+  const tally = (key) => { const m = {}; rolls.forEach(r => (r[key] || []).forEach(s => { m[s] = (m[s] || 0) + 1; })); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
+  const hitTally = tally("hit"), takenTally = tally("taken");
+  const totalHit = hitTally.reduce((n, x) => n + x[1], 0), totalTaken = takenTally.reduce((n, x) => n + x[1], 0);
+  const partnerTally = (() => { const m = {}; rolls.forEach(r => { if (r.partner) m[r.partner] = (m[r.partner] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1]); })();
+  const tgl = (field, name) => setRoll(r => ({ ...r, [field]: r[field].includes(name) ? r[field].filter(x => x !== name) : [...r[field], name] }));
+  // promotion durations
+  const promoAsc = [...promotions].sort((a, b) => a.date.localeCompare(b.date));
+  const durById = {}; promoAsc.forEach((p, i) => { const next = promoAsc[i + 1] ? promoAsc[i + 1].date : today; durById[p.id] = fmtDur(new Date(next) - new Date(p.date)); });
   const goal = profile.weeklyGoal || 3;
   const thisWeek = entries.filter(e => weekKey(e.date) === weekKey(today)).length;
   const totalHours = Math.round(entries.reduce((n, e) => n + (e.length || e.minutes || 0), 0) / 60);
@@ -3499,12 +3525,14 @@ function JournalModal({ profile, setProfile, entries, onLog, onDelete, onClose }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-ink-950/85 backdrop-blur-sm">
-      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3">
+      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3 flex-wrap">
         <span className="text-lg">📒</span><h2 className="font-display font-semibold text-white">Training Journal</h2>
+        <div className="flex items-center gap-1 ml-2">{tabBtn("overview", "Overview")}{tabBtn("rolls", "Roll Log")}{tabBtn("promotions", "Promotions")}</div>
         <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
       </div>
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+          {tab === "overview" && <>
 
           {/* Profile */}
           <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
@@ -3597,6 +3625,138 @@ function JournalModal({ profile, setProfile, entries, onLog, onDelete, onClose }
               </div>
             </div>
           )}
+          </>}
+
+          {tab === "rolls" && <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-2xl glass ring-1 ring-white/5 p-4"><div className="text-3xl font-display font-bold text-white">{rolls.length}</div><div className="text-xs text-slate-400 mt-0.5">rolls logged</div></div>
+              <div className="rounded-2xl glass ring-1 ring-white/5 p-4"><div className="text-3xl font-display font-bold text-emerald-300">{totalHit}</div><div className="text-xs text-slate-400 mt-0.5">subs hit</div></div>
+              <div className="rounded-2xl glass ring-1 ring-white/5 p-4"><div className="text-3xl font-display font-bold text-rose-300">{totalTaken}</div><div className="text-xs text-slate-400 mt-0.5">subs taken</div></div>
+              <div className="rounded-2xl glass ring-1 ring-white/5 p-4"><div className="text-3xl font-display font-bold text-white">{totalTaken ? (totalHit / totalTaken).toFixed(1) : (totalHit || "—")}</div><div className="text-xs text-slate-400 mt-0.5">hit : taken ratio</div></div>
+            </div>
+            <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Log a roll</h3>
+              <div className="flex flex-wrap gap-2 items-center mb-3">
+                <input type="date" value={roll.date} onChange={e => setRoll({ ...roll, date: e.target.value })} className="bg-ink-850 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-slate-200" />
+                <input value={roll.partner} onChange={e => setRoll({ ...roll, partner: e.target.value })} placeholder="Partner (optional)" className="bg-ink-850 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder-slate-600 w-48" />
+                <input value={roll.note} onChange={e => setRoll({ ...roll, note: e.target.value })} placeholder="Note…" className="flex-1 min-w-[140px] bg-ink-850 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder-slate-600" />
+              </div>
+              <div className="text-[11px] text-emerald-300/80 mb-1">Subs I hit</div>
+              <div className="flex flex-wrap gap-1.5 mb-2.5">{SUB_NAMES.map(s => <button key={s} onClick={() => tgl("hit", s)} className={`text-[11px] px-2 py-1 rounded-full border transition ${roll.hit.includes(s) ? "bg-emerald-500/25 text-emerald-200 border-emerald-400/40" : "bg-ink-800 text-slate-400 border-white/5 hover:bg-ink-700"}`}>{s}</button>)}</div>
+              <div className="text-[11px] text-rose-300/80 mb-1">Subs I got caught by</div>
+              <div className="flex flex-wrap gap-1.5 mb-3">{SUB_NAMES.map(s => <button key={s} onClick={() => tgl("taken", s)} className={`text-[11px] px-2 py-1 rounded-full border transition ${roll.taken.includes(s) ? "bg-rose-500/25 text-rose-200 border-rose-400/40" : "bg-ink-800 text-slate-400 border-white/5 hover:bg-ink-700"}`}>{s}</button>)}</div>
+              <button onClick={() => { onAddRoll({ date: roll.date, partner: roll.partner.trim(), hit: roll.hit, taken: roll.taken, note: roll.note.trim() }); setRoll({ date: roll.date, partner: "", hit: [], taken: [], note: "" }); }}
+                className="text-sm px-4 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold transition">Log roll</button>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {[["Top finishes", hitTally, "#6ee7b7"], ["Caught by most", takenTally, "#fda4af"], ["Top partners", partnerTally, "#c7d2fe"]].map(([title, list, col]) => (
+                <div key={title} className="rounded-2xl glass ring-1 ring-white/5 p-4">
+                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">{title}</h4>
+                  {list.length === 0 ? <p className="text-xs text-slate-600">No data yet.</p> : list.slice(0, 5).map(([name, n]) => (
+                    <div key={name} className="flex items-center gap-2 text-sm py-0.5"><span className="flex-1 text-slate-300 truncate">{name}</span><span className="text-xs font-mono" style={{ color: col }}>{n}</span></div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            {rolls.length > 0 && (
+              <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Recent Rolls</h3>
+                <div className="space-y-1.5">{rolls.slice(0, 12).map(r => (
+                  <div key={r.id} className="group/r flex items-center gap-2 text-sm rounded-lg bg-ink-800/50 px-3 py-2 flex-wrap">
+                    <span className="text-slate-500 text-xs font-mono w-20 shrink-0">{r.date}</span>
+                    {r.partner && <span className="text-slate-300 shrink-0">{r.partner}</span>}
+                    {(r.hit || []).map(h => <span key={"h" + h} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300">✓ {h}</span>)}
+                    {(r.taken || []).map(h => <span key={"t" + h} className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300">✕ {h}</span>)}
+                    {r.note && <span className="text-slate-500 text-xs truncate">{r.note}</span>}
+                    <button onClick={() => onDeleteRoll(r.id)} className="ml-auto shrink-0 px-1.5 text-slate-600 hover:text-rose-300 opacity-0 group-hover/r:opacity-100 transition">✕</button>
+                  </div>
+                ))}</div>
+              </div>
+            )}
+          </>}
+
+          {tab === "promotions" && <>
+            <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Log a promotion</h3>
+              <div className="flex flex-wrap gap-2 items-center">
+                <input type="date" value={promo.date} onChange={e => setPromo({ ...promo, date: e.target.value })} className="bg-ink-850 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-slate-200" />
+                <select value={promo.belt} onChange={e => setPromo({ ...promo, belt: e.target.value })} className="bg-ink-850 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-slate-200">{Object.keys(BELTS).map(b => <option key={b}>{b}</option>)}</select>
+                <select value={promo.stripes} onChange={e => setPromo({ ...promo, stripes: Number(e.target.value) })} className="bg-ink-850 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-slate-200">{[0, 1, 2, 3, 4].map(n => <option key={n} value={n}>{n} stripe{n !== 1 ? "s" : ""}</option>)}</select>
+                <input value={promo.note} onChange={e => setPromo({ ...promo, note: e.target.value })} placeholder="By whom / note…" className="flex-1 min-w-[140px] bg-ink-850 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder-slate-600" />
+                <button onClick={() => { onAddPromotion({ date: promo.date, belt: promo.belt, stripes: promo.stripes, note: promo.note.trim() }); setProfile({ ...profile, belt: promo.belt, stripes: promo.stripes }); setPromo({ ...promo, note: "" }); }}
+                  className="text-sm px-4 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold transition">Add</button>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-2">Adding a promotion also updates your current belt &amp; stripes.</p>
+            </div>
+            {promotions.length === 0 ? (
+              <div className="rounded-2xl glass ring-1 ring-white/5 p-10 text-center text-slate-500">No promotions logged yet. Add your belts &amp; stripes to build your timeline.</div>
+            ) : (
+              <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4">Timeline</h3>
+                <div className="space-y-0">
+                  {[...promotions].sort((a, b) => b.date.localeCompare(a.date)).map((p, i, arr) => (
+                    <div key={p.id} className="group/p flex gap-4 relative">
+                      <div className="flex flex-col items-center shrink-0">
+                        <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: BELTS[p.belt] || "#e7ebf5", border: "2px solid rgba(255,255,255,.15)" }}>
+                          <div className="flex gap-0.5">{[0, 1, 2, 3].map(k => <span key={k} className="h-3.5 w-0.5 rounded-sm" style={{ background: k < p.stripes ? (p.belt === "Black" ? "#ef4444" : "#111827") : "rgba(255,255,255,.2)" }} />)}</div>
+                        </div>
+                        {i < arr.length - 1 && <div className="w-0.5 flex-1 bg-white/10 my-1" />}
+                      </div>
+                      <div className="pb-5 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white">{p.belt} Belt{p.stripes ? ` · ${p.stripes} stripe${p.stripes !== 1 ? "s" : ""}` : ""}</span>
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-ink-700 text-slate-400">{durById[p.id]} in rank</span>
+                          <button onClick={() => onDeletePromotion(p.id)} className="ml-auto px-1.5 text-slate-600 hover:text-rose-300 opacity-0 group-hover/p:opacity-100 transition">✕</button>
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">{p.date}{p.note ? ` · ${p.note}` : ""}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//  TODAY — home widget on the Standing position (streak, goal, quick start)
+//////////////////////////////////////////////////////////////////////////////
+
+function TodayWidget({ profile, sessions, activePlan, onStartSession, onFollowPlan, onLogClass }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const goal = profile.weeklyGoal || 3;
+  const thisWeek = sessions.filter(e => weekKey(e.date) === weekKey(today)).length;
+  const weeks = new Set(sessions.map(e => weekKey(e.date)));
+  let streak = 0; const d = new Date(today);
+  if (!weeks.has(weekKey(d))) d.setDate(d.getDate() - 7);
+  while (weeks.has(weekKey(d))) { streak++; d.setDate(d.getDate() - 7); }
+  const r = 18, c = 2 * Math.PI * r, pct = Math.min(1, thisWeek / goal);
+  const greet = (() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; })();
+  return (
+    <div className="rounded-3xl glass ring-1 ring-white/10 p-5 mb-6 bg-gradient-to-br from-indigo-500/10 to-transparent">
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: BELTS[profile.belt] || "#e7ebf5", border: "2px solid rgba(255,255,255,.15)" }}>
+          <div className="flex gap-0.5">{[0, 1, 2, 3].map(i => <span key={i} className="h-4 w-1 rounded-sm" style={{ background: i < profile.stripes ? (profile.belt === "Black" ? "#ef4444" : "#111827") : "rgba(255,255,255,.2)" }} />)}</div>
+        </div>
+        <div>
+          <div className="font-display text-lg font-bold text-white">{greet} 👋</div>
+          <div className="text-xs text-slate-400">{profile.belt} belt{profile.stripes ? ` · ${profile.stripes} stripe${profile.stripes !== 1 ? "s" : ""}` : ""} · 🔥 {streak}-week streak</div>
+        </div>
+        <div className="flex items-center gap-2 ml-2">
+          <div className="relative">
+            <svg width="48" height="48" className="-rotate-90"><circle cx="24" cy="24" r={r} fill="none" stroke="#27314a" strokeWidth="5" /><circle cx="24" cy="24" r={r} fill="none" stroke={thisWeek >= goal ? "#34d399" : "#6366f1"} strokeWidth="5" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} /></svg>
+            <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white">{thisWeek}/{goal}</span>
+          </div>
+          <span className="text-xs text-slate-400">this week</span>
+        </div>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <button onClick={onStartSession} className="text-sm px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold transition">▶ Start today's session</button>
+          {activePlan && <button onClick={onFollowPlan} className="text-sm px-3 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 transition">Follow my plan</button>}
+          <button onClick={onLogClass} className="text-sm px-3 py-2 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200 border border-white/5 transition">📒 Log a class</button>
         </div>
       </div>
     </div>
@@ -3637,11 +3797,19 @@ function App() {
   const [toolsOpen, setToolsOpen] = React.useState(false);
   const [sessions, setSessions] = useLocalStorage("bjjflow:sessions", []);
   const [profile, setProfile] = useLocalStorage("bjjflow:profile", { belt: "White", stripes: 0, since: "", weeklyGoal: 3, name: "" });
+  const [promotions, setPromotions] = useLocalStorage("bjjflow:promotions", []);
+  const [rolls, setRolls] = useLocalStorage("bjjflow:rolls", []);
   const [journalOpen, setJournalOpen] = React.useState(false);
+  const [trainTab, setTrainTab] = React.useState("position");
   const dismissWelcome = () => { setSeen(true); setWelcomeOpen(false); };
 
   const addLog = (entry) => setSessions(s => [{ id: Date.now(), ...entry }, ...s].slice(0, 200));
   const deleteSession = (id) => setSessions(s => s.filter(e => e.id !== id));
+  const addPromotion = (entry) => setPromotions(p => [{ id: Date.now(), ...entry }, ...p]);
+  const deletePromotion = (id) => setPromotions(p => p.filter(e => e.id !== id));
+  const addRoll = (entry) => setRolls(r => [{ id: Date.now(), ...entry }, ...r].slice(0, 300));
+  const deleteRoll = (id) => setRolls(r => r.filter(e => e.id !== id));
+  const openTrain = (tab) => { setTrainTab(tab || "position"); setTrainOpen(true); };
 
   const logSession = (entry) => {
     setSessions(s => [{ id: Date.now(), date: new Date().toISOString().slice(0, 10), ...entry }, ...s].slice(0, 60));
@@ -3829,7 +3997,7 @@ function App() {
         case "m": setMapOpen(true); break;
         case "p": setPlansOpen(true); break;
         case "d": setDrillOpen(true); break;
-        case "t": setTrainOpen(true); break;
+        case "t": openTrain("position"); break;
         case "w": setAthleteOpen(true); break;
         case "j": setJournalOpen(true); break;
         case "s": setDashOpen(true); break;
@@ -3865,7 +4033,7 @@ function App() {
           onDeleteFlow={deleteFlow}
           learned={learned}
           tools={[
-            { icon: "🥋", label: "Train", fn: () => { setTrainOpen(true); setSidebarOpen(false); } },
+            { icon: "🥋", label: "Train", fn: () => { openTrain("position"); setSidebarOpen(false); } },
             { icon: "💪", label: "Athlete", fn: () => { setAthleteOpen(true); setSidebarOpen(false); } },
             { icon: "🎯", label: "Drill", fn: () => { setDrillOpen(true); setSidebarOpen(false); } },
             { icon: "🧠", label: "Plans", fn: () => { setPlansOpen(true); setSidebarOpen(false); } },
@@ -3914,7 +4082,7 @@ function App() {
                   <div className="fixed inset-0 z-40" onClick={() => setToolsOpen(false)} />
                   <div className="absolute right-0 mt-2 w-60 glass rounded-xl ring-1 ring-white/10 shadow-2xl z-50 p-1.5">
                     {[
-                      { icon: "🥋", label: "Training Lab", hint: "T", fn: () => setTrainOpen(true) },
+                      { icon: "🥋", label: "Training Lab", hint: "T", fn: () => openTrain("position") },
                       { icon: "💪", label: "Athlete · S&C", hint: "W", fn: () => setAthleteOpen(true) },
                       { icon: "🎯", label: "Drill & Quiz", hint: "D", fn: () => setDrillOpen(true) },
                       { icon: "🧠", label: "Game Plans", hint: "P", fn: () => setPlansOpen(true) },
@@ -3981,6 +4149,12 @@ function App() {
         {/* Scrollable content */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto grid-bg">
           <div key={animKey} className="fade-key max-w-5xl mx-auto px-4 sm:px-6 py-6">
+            {currentId === "standing" && (
+              <TodayWidget profile={profile} sessions={sessions} activePlan={activePlan}
+                onStartSession={() => openTrain("session")}
+                onFollowPlan={followPlan}
+                onLogClass={() => setJournalOpen(true)} />
+            )}
             {/* Position hero */}
             <div className="grid lg:grid-cols-2 gap-5 mb-6">
               {/* Visual — embedded clip if set, otherwise the diagram */}
@@ -4105,7 +4279,7 @@ function App() {
         onJump={(id) => { goTo(id, { viaArchive: true }); setDashOpen(false); }}
         onClose={() => setDashOpen(false)} />}
 
-      {trainOpen && <TrainingModal currentId={currentId} activePlan={activePlan} defaultStyle={activePlan ? activePlan.style : null}
+      {trainOpen && <TrainingModal currentId={currentId} activePlan={activePlan} defaultStyle={activePlan ? activePlan.style : null} defaultTab={trainTab}
         onJump={(id) => { goTo(id, { viaArchive: true }); setTrainOpen(false); }}
         onOpenAthlete={() => { setTrainOpen(false); setAthleteOpen(true); }}
         onLogSession={logSession}
@@ -4116,7 +4290,10 @@ function App() {
       {welcomeOpen && <WelcomeModal onClose={dismissWelcome} />}
 
       {journalOpen && <JournalModal profile={profile} setProfile={setProfile} entries={sessions}
-        onLog={addLog} onDelete={deleteSession} onClose={() => setJournalOpen(false)} />}
+        onLog={addLog} onDelete={deleteSession}
+        promotions={promotions} onAddPromotion={addPromotion} onDeletePromotion={deletePromotion}
+        rolls={rolls} onAddRoll={addRoll} onDeleteRoll={deleteRoll}
+        onClose={() => setJournalOpen(false)} />}
     </div>
   );
 }
