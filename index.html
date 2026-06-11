@@ -2367,6 +2367,10 @@ function importData(file, done) {
   r.readAsText(file);
 }
 function resetData() { DATA_KEYS.forEach(k => localStorage.removeItem(k)); }
+function downloadCSV(filename, rows) {
+  const csv = rows.map(r => r.map(c => { const s = String(c == null ? "" : c); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(",")).join("\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = filename; a.click();
+}
 
 // Belt presets (adult ranks).
 const BELTS = {
@@ -3775,7 +3779,11 @@ function JournalModal({ profile, setProfile, entries, onLog, onDelete, promotion
           {/* Recent entries */}
           {entries.length > 0 && (
             <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Log</h3>
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Log</h3>
+                <button onClick={() => downloadCSV("submap-training-log.csv", [["date", "type", "minutes", "rounds", "note"], ...entries.map(e => [e.date, e.type || "Session", e.length || e.minutes || "", e.rounds || "", e.note || (e.focus ? e.focus.join(" / ") : "")])])}
+                  className="ml-auto text-[11px] px-2 py-1 rounded-md bg-ink-700 hover:bg-ink-600 text-slate-300 border border-white/5">⬇ CSV</button>
+              </div>
               <div className="space-y-1.5">
                 {entries.slice(0, 12).map(e => (
                   <div key={e.id} className="group/e flex items-center gap-3 text-sm rounded-lg bg-ink-800/50 px-3 py-2">
@@ -4113,6 +4121,47 @@ function InsightsModal({ sessions, rolls, learned, srs, drillAgg, activePlan, pr
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//  NOTES HUB — browse & search all per-position notes in one place
+//////////////////////////////////////////////////////////////////////////////
+
+function NotesHubModal({ notes, onJump, onClose }) {
+  const [q, setQ] = React.useState("");
+  const entries = Object.entries(notes).filter(([id, txt]) => POSITIONS[id] && txt && txt.trim());
+  const s = q.trim().toLowerCase();
+  const filtered = entries.filter(([id, txt]) => !s || POSITIONS[id].name.toLowerCase().includes(s) || txt.toLowerCase().includes(s))
+    .sort((a, b) => POSITIONS[a[0]].name.localeCompare(POSITIONS[b[0]].name));
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink-950/85 backdrop-blur-sm">
+      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3">
+        <span className="text-lg">📝</span><h2 className="font-display font-semibold text-white">Notes Hub</h2>
+        <span className="text-xs text-slate-500">{entries.length} position{entries.length !== 1 ? "s" : ""} with notes</span>
+        <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-3">
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search your notes…"
+            className="w-full bg-ink-850 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+          {filtered.length === 0 && (
+            <div className="text-center text-slate-500 py-12 text-sm">{entries.length === 0 ? "No notes yet — add notes on any position and they'll collect here." : `No notes match “${q}”.`}</div>
+          )}
+          {filtered.map(([id, txt]) => (
+            <button key={id} onClick={() => onJump(id)} className="w-full text-left rounded-2xl glass ring-1 ring-white/5 p-4 hover:bg-ink-700/40 transition">
+              <div className="flex items-center gap-2 mb-1.5">
+                <RatingPip rating={POSITIONS[id].rating} />
+                <span className="font-semibold text-slate-100">{POSITIONS[id].name}</span>
+                <span className="text-[11px] text-slate-500">{POSITIONS[id].group}</span>
+                <span className="ml-auto text-xs text-indigo-300">Open →</span>
+              </div>
+              <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap line-clamp-3">{txt}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //  ROUND TIMER — interval timer for rounds / positional sparring
 //////////////////////////////////////////////////////////////////////////////
 
@@ -4412,6 +4461,7 @@ function App() {
   const [comps, setComps] = useLocalStorage("bjjflow:comps", []);
   const [shareOpen, setShareOpen] = React.useState(false);
   const [timerOpen, setTimerOpen] = React.useState(false);
+  const [notesOpen, setNotesOpen] = React.useState(false);
   const [trainTab, setTrainTab] = React.useState("position");
   const dismissWelcome = () => { setSeen(true); setWelcomeOpen(false); };
 
@@ -4619,10 +4669,10 @@ function App() {
     const onKey = (e) => {
       const tag = (e.target.tagName || "").toLowerCase();
       const typing = tag === "input" || tag === "textarea" || e.target.isContentEditable;
-      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen || insightsOpen || goalsOpen || shareOpen || timerOpen;
+      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen || insightsOpen || goalsOpen || shareOpen || timerOpen || notesOpen;
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setCmdkOpen(v => !v); return; }
       if (typing) return;
-      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); setInsightsOpen(false); setGoalsOpen(false); setShareOpen(false); setTimerOpen(false); return; }
+      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); setInsightsOpen(false); setGoalsOpen(false); setShareOpen(false); setTimerOpen(false); setNotesOpen(false); return; }
       if (anyModal) return;
       if (/^[1-9]$/.test(e.key)) { const t = pos.transitions[+e.key - 1]; if (t) goTo(t.to); return; }
       switch (e.key.toLowerCase()) {
@@ -4635,6 +4685,7 @@ function App() {
         case "w": setAthleteOpen(true); break;
         case "j": setJournalOpen(true); break;
         case "i": setInsightsOpen(true); break;
+        case "n": setNotesOpen(true); break;
         case "g": setGoalsOpen(true); break;
         case "s": setDashOpen(true); break;
         case "?": setWelcomeOpen(true); break;
@@ -4644,7 +4695,7 @@ function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, trainOpen, athleteOpen, welcomeOpen, journalOpen, insightsOpen, goalsOpen, history]); // eslint-disable-line
+  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, trainOpen, athleteOpen, welcomeOpen, journalOpen, insightsOpen, goalsOpen, notesOpen, history]); // eslint-disable-line
 
   // Flow polish: when the position changes, scroll the content back to the top
   // so each new position opens at its hero, not wherever you last scrolled.
@@ -4730,6 +4781,7 @@ function App() {
                       { icon: "🏆", label: "Goals & Badges", hint: "G", fn: () => setGoalsOpen(true) },
                       { icon: "📤", label: "Share Card", hint: "", fn: () => setShareOpen(true) },
                       { icon: "⏱️", label: "Round Timer", hint: "", fn: () => setTimerOpen(true) },
+                      { icon: "📝", label: "Notes Hub", hint: "N", fn: () => setNotesOpen(true) },
                       { icon: "📊", label: "Dashboard", hint: "S", fn: () => setDashOpen(true) },
                       { icon: "📄", label: "Export / Print", hint: "", fn: exportProgram },
                       { icon: "⚙️", label: "Settings", hint: "", fn: () => setSettingsOpen(true) },
@@ -4953,6 +5005,8 @@ function App() {
         onClose={() => setShareOpen(false)} />}
 
       {timerOpen && <TimerModal onClose={() => setTimerOpen(false)} />}
+
+      {notesOpen && <NotesHubModal notes={notes} onJump={(id) => { goTo(id, { viaArchive: true }); setNotesOpen(false); }} onClose={() => setNotesOpen(false)} />}
     </div>
   );
 }
