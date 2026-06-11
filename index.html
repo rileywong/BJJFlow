@@ -2338,7 +2338,7 @@ function useLocalStorage(key, initial) {
 const DATA_KEYS = [
   "bjjflow:favs", "bjjflow:flows", "bjjflow:notes", "bjjflow:plans", "bjjflow:activePlan",
   "bjjflow:ruleset", "bjjflow:learned", "bjjflow:settings", "bjjflow:srs", "bjjflow:drillAgg",
-  "bjjflow:videos", "bjjflow:sessions", "bjjflow:profile", "bjjflow:seen", "bjjflow:promotions", "bjjflow:rolls", "bjjflow:goals", "bjjflow:mission", "bjjflow:comps",
+  "bjjflow:videos", "bjjflow:sessions", "bjjflow:profile", "bjjflow:seen", "bjjflow:promotions", "bjjflow:rolls", "bjjflow:goals", "bjjflow:mission", "bjjflow:comps", "bjjflow:timer",
 ];
 // Submission names (for the roll log tags), derived from the position graph.
 const SUB_NAMES = [...new Set(Object.values(POSITIONS).filter(p => p.group === "Submissions").map(p => p.name.replace(/\s*\(.*\)/, "").replace(/\s*\/.*/, "").trim()))];
@@ -4113,6 +4113,99 @@ function InsightsModal({ sessions, rolls, learned, srs, drillAgg, activePlan, pr
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//  ROUND TIMER — interval timer for rounds / positional sparring
+//////////////////////////////////////////////////////////////////////////////
+
+function TimerModal({ onClose }) {
+  const [cfg, setCfg] = useLocalStorage("bjjflow:timer", { rounds: 5, work: 300, rest: 60, prep: 10 });
+  const [audioOn, setAudioOn] = React.useState(true);
+  const [running, setRunning] = React.useState(false);
+  const [phase, setPhase] = React.useState("idle"); // idle|prep|work|rest|done
+  const [round, setRound] = React.useState(0);
+  const [remaining, setRemaining] = React.useState(0);
+  const segsRef = React.useRef([]); const idxRef = React.useRef(0); const acRef = React.useRef(null);
+
+  const beep = (freq = 880, dur = 0.18, vol = 0.3) => {
+    if (!audioOn) return;
+    try { const ac = acRef.current || (acRef.current = new (window.AudioContext || window.webkitAudioContext)()); const o = ac.createOscillator(), g = ac.createGain(); o.type = "sine"; o.frequency.value = freq; o.connect(g); g.connect(ac.destination); g.gain.value = vol; o.start(); o.stop(ac.currentTime + dur); } catch (e) {}
+  };
+  const buildSegs = () => { const s = []; if (cfg.prep > 0) s.push({ type: "prep", len: cfg.prep }); for (let r = 1; r <= cfg.rounds; r++) { s.push({ type: "work", len: cfg.work, round: r }); if (r < cfg.rounds && cfg.rest > 0) s.push({ type: "rest", len: cfg.rest, round: r }); } return s; };
+  const start = () => { if (phase === "idle" || phase === "done") { const segs = buildSegs(); segsRef.current = segs; idxRef.current = 0; const s0 = segs[0]; setPhase(s0.type); setRound(s0.round || 0); setRemaining(s0.len); } setRunning(true); beep(660, 0.1); };
+  const reset = () => { setRunning(false); setPhase("idle"); setRound(0); setRemaining(0); idxRef.current = 0; };
+
+  React.useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => {
+      setRemaining(prev => {
+        if (prev > 1) { if (prev <= 4) beep(760, 0.08, 0.22); return prev - 1; }
+        const nextIdx = idxRef.current + 1; const segs = segsRef.current;
+        if (nextIdx >= segs.length) { setRunning(false); setPhase("done"); beep(420, 0.6, 0.35); return 0; }
+        idxRef.current = nextIdx; const seg = segs[nextIdx]; setPhase(seg.type); setRound(seg.round || 0); beep(seg.type === "work" ? 990 : 540, 0.4, 0.35); return seg.len;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [running]); // eslint-disable-line
+
+  const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const phaseColor = { prep: "#818cf8", work: "#34d399", rest: "#fbbf24", done: "#fb7185", idle: "#64748b" }[phase];
+  const phaseLabel = { prep: "Get ready", work: "WORK", rest: "Rest", done: "Done!", idle: "Ready" }[phase];
+  const presets = [{ label: "5×5 / 1", rounds: 5, work: 300, rest: 60 }, { label: "6×3 / 1", rounds: 6, work: 180, rest: 60 }, { label: "3×5 / 1", rounds: 3, work: 300, rest: 60 }, { label: "10×1 / :30", rounds: 10, work: 60, rest: 30 }];
+  const Step = ({ label, val, set, step, fmtV }) => (
+    <div className="rounded-xl bg-ink-800/60 ring-1 ring-white/5 p-3 text-center">
+      <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">{label}</div>
+      <div className="flex items-center justify-center gap-2">
+        <button onClick={() => set(Math.max(step, val - step))} className="h-6 w-6 rounded bg-ink-700 text-slate-300">−</button>
+        <span className="text-lg font-bold text-white w-12">{fmtV ? fmtV(val) : val}</span>
+        <button onClick={() => set(val + step)} className="h-6 w-6 rounded bg-ink-700 text-slate-300">+</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col bg-ink-950/90 backdrop-blur-sm">
+      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3">
+        <span className="text-lg">⏱️</span><h2 className="font-display font-semibold text-white">Round Timer</h2>
+        <button onClick={() => setAudioOn(a => !a)} title="Sound" className={`ml-auto text-sm px-2.5 py-1.5 rounded-lg border transition ${audioOn ? "bg-ink-700 text-slate-200 border-white/10" : "bg-ink-800 text-slate-500 border-white/5"}`}>{audioOn ? "🔊" : "🔇"}</button>
+        <button onClick={onClose} className="text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+      </div>
+      <div className="flex-1 overflow-y-auto flex items-center justify-center">
+        <div className="w-full max-w-md px-6 py-8 text-center">
+          <div className="text-sm font-bold uppercase tracking-[0.2em] mb-2" style={{ color: phaseColor }}>{phaseLabel}{(phase === "work" || phase === "rest") ? ` · Round ${round}/${cfg.rounds}` : ""}</div>
+          <div className="font-display font-bold leading-none my-2" style={{ fontSize: "5.5rem", color: phase === "idle" ? "#e6e9f2" : phaseColor }}>{fmt(phase === "idle" ? cfg.work : remaining)}</div>
+          {phase !== "idle" && (
+            <div className="h-2 rounded-full bg-ink-700 overflow-hidden mb-5 max-w-xs mx-auto">
+              <div className="h-full rounded-full transition-all" style={{ width: phase === "done" ? "100%" : `${100 - (remaining / (segsRef.current[idxRef.current] ? segsRef.current[idxRef.current].len : 1) * 100)}%`, background: phaseColor }} />
+            </div>
+          )}
+          <div className="flex items-center justify-center gap-3 my-5">
+            {!running ? (
+              <button onClick={start} className="px-8 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-ink-950 font-bold text-lg transition">{phase === "idle" || phase === "done" ? "▶ Start" : "▶ Resume"}</button>
+            ) : (
+              <button onClick={() => setRunning(false)} className="px-8 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-ink-950 font-bold text-lg transition">⏸ Pause</button>
+            )}
+            <button onClick={reset} className="px-5 py-3 rounded-xl bg-ink-700 hover:bg-ink-600 text-slate-200 font-semibold transition">↺ Reset</button>
+          </div>
+          {phase === "idle" && (
+            <>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <Step label="Rounds" val={cfg.rounds} set={v => setCfg({ ...cfg, rounds: v })} step={1} />
+                <Step label="Work" val={cfg.work} set={v => setCfg({ ...cfg, work: v })} step={30} fmtV={fmt} />
+                <Step label="Rest" val={cfg.rest} set={v => setCfg({ ...cfg, rest: v })} step={15} fmtV={fmt} />
+              </div>
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {presets.map(p => (
+                  <button key={p.label} onClick={() => setCfg({ ...cfg, rounds: p.rounds, work: p.work, rest: p.rest })} className="text-xs px-2.5 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-300 border border-white/5 transition">{p.label}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //  SHARE CARD — a downloadable 1200x630 stats card for social
 //////////////////////////////////////////////////////////////////////////////
 
@@ -4318,6 +4411,7 @@ function App() {
   const [mission, setMission] = useLocalStorage("bjjflow:mission", { date: "", done: false });
   const [comps, setComps] = useLocalStorage("bjjflow:comps", []);
   const [shareOpen, setShareOpen] = React.useState(false);
+  const [timerOpen, setTimerOpen] = React.useState(false);
   const [trainTab, setTrainTab] = React.useState("position");
   const dismissWelcome = () => { setSeen(true); setWelcomeOpen(false); };
 
@@ -4525,10 +4619,10 @@ function App() {
     const onKey = (e) => {
       const tag = (e.target.tagName || "").toLowerCase();
       const typing = tag === "input" || tag === "textarea" || e.target.isContentEditable;
-      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen || insightsOpen || goalsOpen || shareOpen;
+      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen || insightsOpen || goalsOpen || shareOpen || timerOpen;
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setCmdkOpen(v => !v); return; }
       if (typing) return;
-      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); setInsightsOpen(false); setGoalsOpen(false); setShareOpen(false); return; }
+      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); setInsightsOpen(false); setGoalsOpen(false); setShareOpen(false); setTimerOpen(false); return; }
       if (anyModal) return;
       if (/^[1-9]$/.test(e.key)) { const t = pos.transitions[+e.key - 1]; if (t) goTo(t.to); return; }
       switch (e.key.toLowerCase()) {
@@ -4635,6 +4729,7 @@ function App() {
                       { icon: "💡", label: "Insights", hint: "I", fn: () => setInsightsOpen(true) },
                       { icon: "🏆", label: "Goals & Badges", hint: "G", fn: () => setGoalsOpen(true) },
                       { icon: "📤", label: "Share Card", hint: "", fn: () => setShareOpen(true) },
+                      { icon: "⏱️", label: "Round Timer", hint: "", fn: () => setTimerOpen(true) },
                       { icon: "📊", label: "Dashboard", hint: "S", fn: () => setDashOpen(true) },
                       { icon: "📄", label: "Export / Print", hint: "", fn: exportProgram },
                       { icon: "⚙️", label: "Settings", hint: "", fn: () => setSettingsOpen(true) },
@@ -4856,6 +4951,8 @@ function App() {
       {shareOpen && <ShareModal sessions={sessions} rolls={rolls} learned={learned} drillAgg={drillAgg}
         plans={plans} activePlan={activePlan} promotions={promotions} comps={comps} profile={profile}
         onClose={() => setShareOpen(false)} />}
+
+      {timerOpen && <TimerModal onClose={() => setTimerOpen(false)} />}
     </div>
   );
 }
