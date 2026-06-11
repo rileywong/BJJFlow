@@ -2314,7 +2314,7 @@ function useLocalStorage(key, initial) {
 const DATA_KEYS = [
   "bjjflow:favs", "bjjflow:flows", "bjjflow:notes", "bjjflow:plans", "bjjflow:activePlan",
   "bjjflow:ruleset", "bjjflow:learned", "bjjflow:settings", "bjjflow:srs", "bjjflow:drillAgg",
-  "bjjflow:videos", "bjjflow:sessions", "bjjflow:profile", "bjjflow:seen", "bjjflow:promotions", "bjjflow:rolls", "bjjflow:goals",
+  "bjjflow:videos", "bjjflow:sessions", "bjjflow:profile", "bjjflow:seen", "bjjflow:promotions", "bjjflow:rolls", "bjjflow:goals", "bjjflow:mission",
 ];
 // Submission names (for the roll log tags), derived from the position graph.
 const SUB_NAMES = [...new Set(Object.values(POSITIONS).filter(p => p.group === "Submissions").map(p => p.name.replace(/\s*\(.*\)/, "").replace(/\s*\/.*/, "").trim()))];
@@ -3000,9 +3000,17 @@ function SettingsModal({ settings, onChange, onClose }) {
 //  DASHBOARD — progress, drill accuracy, plan coverage, shortcuts
 //////////////////////////////////////////////////////////////////////////////
 
-function DashboardModal({ learned, favorites, savedFlows, plans, activePlan, drillAgg, sessions = [], onExport, onJump, onClose }) {
+function DashboardModal({ learned, favorites, savedFlows, plans, activePlan, drillAgg, sessions = [], rolls = [], onExport, onJump, onClose }) {
   const all = Object.values(POSITIONS);
   const learnedSet = new Set(learned);
+  // Learn vs Apply: studied submissions vs ones you actually land in rolls.
+  const subShort = p => p.name.replace(/\s*\(.*\)/, "").replace(/\s*\/.*/, "").trim();
+  const learnedSubs = new Set(all.filter(p => p.group === "Submissions" && learnedSet.has(p.id)).map(subShort));
+  const hitSubs = new Set(rolls.flatMap(r => r.hit || []));
+  const overlap = [...hitSubs].filter(n => learnedSubs.has(n));
+  const drillLive = [...learnedSubs].filter(n => !hitSubs.has(n));
+  const instinct = [...hitSubs].filter(n => !learnedSubs.has(n));
+  const applyRate = learnedSubs.size ? Math.round(overlap.length / learnedSubs.size * 100) : 0;
   const groups = ["Neutral", "Guard", "Half Guard", "Side Control", "Mount", "Back Control", "Turtle", "Leg Entanglements", "Submissions"];
   const overall = Math.round((learned.length / all.length) * 100);
   const acc = drillAgg.seen ? Math.round((drillAgg.correct / drillAgg.seen) * 100) : 0;
@@ -3046,6 +3054,26 @@ function DashboardModal({ learned, favorites, savedFlows, plans, activePlan, dri
                     <span className="text-slate-500 text-xs truncate flex-1">{(s.focus || []).slice(0, 3).join(" · ")}{(s.focus || []).length > 3 ? " …" : ""}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {(learnedSubs.size > 0 || hitSubs.size > 0) && (
+            <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Learn → Apply</h3>
+                <span className="ml-auto text-xs text-slate-400">apply rate <span className="text-white font-semibold">{applyRate}%</span></span>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-3 text-sm">
+                <div className="rounded-xl bg-ink-800/50 p-3"><div className="text-2xl font-display font-bold text-white">{learnedSubs.size}</div><div className="text-[11px] text-slate-400">submissions studied</div></div>
+                <div className="rounded-xl bg-ink-800/50 p-3"><div className="text-2xl font-display font-bold text-emerald-300">{hitSubs.size}</div><div className="text-[11px] text-slate-400">landed in rolls</div></div>
+                <div className="rounded-xl bg-ink-800/50 p-3"><div className="text-2xl font-display font-bold text-amber-300">{overlap.length}</div><div className="text-[11px] text-slate-400">studied → landed</div></div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                <div><div className="text-[11px] font-bold uppercase tracking-wider text-sky-300/80 mb-1">📚 Studied — land it live</div>
+                  <div className="text-xs text-slate-400">{drillLive.length ? drillLive.slice(0, 6).join(" · ") : "—"}</div></div>
+                <div><div className="text-[11px] font-bold uppercase tracking-wider text-rose-300/80 mb-1">⚡ Landed on instinct — go learn it</div>
+                  <div className="text-xs text-slate-400">{instinct.length ? instinct.slice(0, 6).join(" · ") : "—"}</div></div>
               </div>
             </div>
           )}
@@ -3601,6 +3629,8 @@ function JournalModal({ profile, setProfile, entries, onLog, onDelete, promotion
   const hitTally = tally("hit"), takenTally = tally("taken");
   const totalHit = hitTally.reduce((n, x) => n + x[1], 0), totalTaken = takenTally.reduce((n, x) => n + x[1], 0);
   const partnerTally = (() => { const m = {}; rolls.forEach(r => { if (r.partner) m[r.partner] = (m[r.partner] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1]); })();
+  const h2h = (() => { const m = {}; rolls.forEach(r => { if (!r.partner) return; const p = m[r.partner] || (m[r.partner] = { rolls: 0, hit: 0, taken: 0 }); p.rolls++; p.hit += (r.hit || []).length; p.taken += (r.taken || []).length; }); return Object.entries(m).sort((a, b) => b[1].rolls - a[1].rolls); })();
+  const nemesis = h2h.filter(([, v]) => v.taken > v.hit).sort((a, b) => (b[1].taken - b[1].hit) - (a[1].taken - a[1].hit))[0];
   const tgl = (field, name) => setRoll(r => ({ ...r, [field]: r[field].includes(name) ? r[field].filter(x => x !== name) : [...r[field], name] }));
   // promotion durations
   const promoAsc = [...promotions].sort((a, b) => a.date.localeCompare(b.date));
@@ -3761,6 +3791,30 @@ function JournalModal({ profile, setProfile, entries, onLog, onDelete, promotion
                 </div>
               ))}
             </div>
+            {h2h.length > 0 && (
+              <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Head-to-Head</h3>
+                  {nemesis && <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-400/20">🦹 Nemesis: {nemesis[0]}</span>}
+                </div>
+                <div className="space-y-1.5">
+                  {h2h.slice(0, 8).map(([name, v]) => {
+                    const total = v.hit + v.taken || 1; const winning = v.hit >= v.taken;
+                    return (
+                      <div key={name} className="flex items-center gap-3 text-sm">
+                        <span className="w-28 truncate text-slate-200 shrink-0">{name}</span>
+                        <span className="text-[11px] text-slate-500 shrink-0">{v.rolls} rolls</span>
+                        <div className="flex-1 h-2.5 rounded-full bg-rose-500/20 overflow-hidden flex">
+                          <div className="h-full bg-emerald-500/70" style={{ width: `${v.hit / total * 100}%` }} />
+                        </div>
+                        <span className={`shrink-0 text-xs font-semibold ${winning ? "text-emerald-300" : "text-rose-300"}`}>{v.hit}–{v.taken}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="text-[10px] text-slate-600 mt-2">Bar = subs you landed (green) vs got caught by (red) against each partner.</div>
+              </div>
+            )}
             {rolls.length > 0 && (
               <div className="rounded-2xl glass ring-1 ring-white/5 p-5">
                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Recent Rolls</h3>
@@ -3986,9 +4040,31 @@ function InsightsModal({ sessions, rolls, learned, srs, drillAgg, activePlan, pr
 //  TODAY — home widget on the Standing position (streak, goal, quick start)
 //////////////////////////////////////////////////////////////////////////////
 
-function TodayWidget({ profile, sessions, rolls = [], learned = [], srs = {}, activePlan, onStartSession, onFollowPlan, onLogClass, onAction }) {
+// A small rotating daily mission, deterministic by date.
+const MISSIONS = [
+  { t: "Drill 5 quiz questions", cta: "Drill", a: { type: "drill" } },
+  { t: "Study a new position and mark it learned", cta: "Explore", a: { type: "weakest" } },
+  { t: "Log today's class in your journal", cta: "Log", a: { type: "journal" } },
+  { t: "Roll and log one finish + one thing to fix", cta: "Log a roll", a: { type: "journal" } },
+  { t: "Review your active game plan", cta: "Plans", a: { type: "plans" } },
+  { t: "Follow your A-game line from standing", cta: "Follow", a: { type: "followPlan" } },
+  { t: "Check your Insights for today's focus", cta: "Insights", a: { type: "insights" } },
+];
+function dayIndex(dateStr, mod) { let h = 0; for (const ch of dateStr) h = (h * 31 + ch.charCodeAt(0)) % 100000; return h % mod; }
+
+function TodayWidget({ profile, sessions, rolls = [], learned = [], srs = {}, activePlan, mission = {}, onMissionDone, onStartSession, onFollowPlan, onLogClass, onAction }) {
   const insights = buildInsights({ sessions, rolls, learned, srs, activePlan, profile });
   const topInsight = insights.find(i => i.tone !== "slate");
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const dailyMission = MISSIONS[dayIndex(todayStr, MISSIONS.length)];
+  const missionDone = mission && mission.date === todayStr && mission.done;
+  const ls = new Set(learned);
+  let weakestGroup = "Guard", lowPc = 2;
+  ["Guard", "Half Guard", "Side Control", "Mount", "Back Control", "Turtle", "Leg Entanglements"].forEach(g => {
+    const items = Object.values(POSITIONS).filter(p => p.group === g); const pc = items.filter(p => ls.has(p.id)).length / items.length;
+    if (pc < lowPc) { lowPc = pc; weakestGroup = g; }
+  });
+  const missionAction = dailyMission.a.type === "weakest" ? { type: "jumpGroup", group: weakestGroup } : dailyMission.a;
   const today = new Date().toISOString().slice(0, 10);
   const goal = profile.weeklyGoal || 3;
   const thisWeek = sessions.filter(e => weekKey(e.date) === weekKey(today)).length;
@@ -4020,6 +4096,13 @@ function TodayWidget({ profile, sessions, rolls = [], learned = [], srs = {}, ac
           {activePlan && <button onClick={onFollowPlan} className="text-sm px-3 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 transition">Follow my plan</button>}
           <button onClick={onLogClass} className="text-sm px-3 py-2 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200 border border-white/5 transition">📒 Log a class</button>
         </div>
+      </div>
+      <div className={`mt-3 flex items-center gap-2 rounded-xl px-3 py-2 ring-1 ${missionDone ? "bg-emerald-500/10 ring-emerald-400/30" : "bg-amber-400/10 ring-amber-400/30"}`}>
+        <span className="text-base shrink-0">{missionDone ? "✅" : "🎯"}</span>
+        <span className="text-[11px] uppercase tracking-widest text-slate-500 shrink-0 hidden sm:inline">Daily mission</span>
+        <span className={`text-sm flex-1 min-w-0 truncate ${missionDone ? "text-emerald-200 line-through" : "text-slate-100"}`}>{dailyMission.t}</span>
+        {!missionDone && onAction && <button onClick={() => onAction(missionAction)} className="shrink-0 text-xs px-2.5 py-1 rounded-md bg-ink-700 hover:bg-ink-600 text-slate-200 border border-white/5 transition">{dailyMission.cta} →</button>}
+        {onMissionDone && <button onClick={() => onMissionDone(todayStr)} className={`shrink-0 text-xs px-2.5 py-1 rounded-md transition ${missionDone ? "bg-emerald-500/20 text-emerald-200" : "bg-amber-400/20 text-amber-200 hover:bg-amber-400/30"}`}>{missionDone ? "✓ Done" : "Mark done"}</button>}
       </div>
       {topInsight && onAction && (
         <button onClick={() => onAction(topInsight.cta.action)}
@@ -4073,6 +4156,7 @@ function App() {
   const [insightsOpen, setInsightsOpen] = React.useState(false);
   const [goalsOpen, setGoalsOpen] = React.useState(false);
   const [goals, setGoals] = useLocalStorage("bjjflow:goals", []);
+  const [mission, setMission] = useLocalStorage("bjjflow:mission", { date: "", done: false });
   const [trainTab, setTrainTab] = React.useState("position");
   const dismissWelcome = () => { setSeen(true); setWelcomeOpen(false); };
 
@@ -4087,6 +4171,7 @@ function App() {
   const addRoll = (entry) => setRolls(r => [{ id: Date.now(), ...entry }, ...r].slice(0, 300));
   const deleteRoll = (id) => setRolls(r => r.filter(e => e.id !== id));
   const openTrain = (tab) => { setTrainTab(tab || "position"); setTrainOpen(true); };
+  const markMissionDone = (date) => setMission({ date, done: true });
   const onInsightAction = (a) => {
     setInsightsOpen(false);
     switch (a.type) {
@@ -4095,6 +4180,8 @@ function App() {
       case "drill": setDrillOpen(true); break;
       case "plans": setPlansOpen(true); break;
       case "journal": setJournalOpen(true); break;
+      case "insights": setInsightsOpen(true); break;
+      case "followPlan": followPlan(); break;
       case "train": openTrain("position"); break;
       default: break;
     }
@@ -4446,6 +4533,7 @@ function App() {
           <div key={animKey} className="fade-key max-w-5xl mx-auto px-4 sm:px-6 py-6">
             {currentId === "standing" && (
               <TodayWidget profile={profile} sessions={sessions} rolls={rolls} learned={learned} srs={srs} activePlan={activePlan}
+                mission={mission} onMissionDone={markMissionDone}
                 onStartSession={() => openTrain("session")}
                 onFollowPlan={followPlan}
                 onLogClass={() => setJournalOpen(true)}
@@ -4571,7 +4659,7 @@ function App() {
       {settingsOpen && <SettingsModal settings={settings} onChange={setSettings} onClose={() => setSettingsOpen(false)} />}
 
       {dashOpen && <DashboardModal learned={learned} favorites={favorites} savedFlows={savedFlows}
-        plans={plans} activePlan={activePlan} drillAgg={drillAgg} sessions={sessions} onExport={exportProgram}
+        plans={plans} activePlan={activePlan} drillAgg={drillAgg} sessions={sessions} rolls={rolls} onExport={exportProgram}
         onJump={(id) => { goTo(id, { viaArchive: true }); setDashOpen(false); }}
         onClose={() => setDashOpen(false)} />}
 
