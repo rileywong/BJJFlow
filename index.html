@@ -2934,43 +2934,52 @@ function DrillModal({ activePlan, srs = {}, drillAgg = { seen: 0, correct: 0 }, 
 //  COMMAND PALETTE — Ctrl/Cmd-K quick jump to any position
 //////////////////////////////////////////////////////////////////////////////
 
-function CommandPalette({ onPick, onClose }) {
+function CommandPalette({ commands = [], onPick, onClose }) {
   const [q, setQ] = React.useState("");
   const [idx, setIdx] = React.useState(0);
   const inputRef = React.useRef(null);
-  const results = React.useMemo(() => {
+  const items = React.useMemo(() => {
     const s = q.trim().toLowerCase();
-    let list = Object.values(POSITIONS);
-    if (s) list = list.filter(p => (p.name + " " + p.group + " " + p.summary).toLowerCase().includes(s));
-    return list.slice(0, 50);
-  }, [q]);
+    const cmds = commands.filter(c => !s || c.label.toLowerCase().includes(s)).map(c => ({ kind: "cmd", ...c }));
+    const pos = (s ? Object.values(POSITIONS).filter(p => (p.name + " " + p.group + " " + p.summary).toLowerCase().includes(s)) : []).slice(0, 40)
+      .map(p => ({ kind: "pos", id: p.id, label: p.name, sub: p.group + " · " + p.summary, rating: p.rating }));
+    return [...cmds, ...pos];
+  }, [q, commands]);
   React.useEffect(() => { if (inputRef.current) inputRef.current.focus(); }, []);
   React.useEffect(() => { setIdx(0); }, [q]);
+  const run = (it) => { if (!it) return; if (it.kind === "cmd") { it.run(); onClose(); } else onPick(it.id); };
   const onKey = (e) => {
-    if (e.key === "ArrowDown") { e.preventDefault(); setIdx(i => Math.min(i + 1, results.length - 1)); }
+    if (e.key === "ArrowDown") { e.preventDefault(); setIdx(i => Math.min(i + 1, items.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setIdx(i => Math.max(i - 1, 0)); }
-    else if (e.key === "Enter") { if (results[idx]) onPick(results[idx].id); }
+    else if (e.key === "Enter") { run(items[idx]); }
     else if (e.key === "Escape") { onClose(); }
   };
+  let lastKind = null;
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center pt-24 px-4 bg-ink-950/70 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-lg glass rounded-2xl ring-1 ring-white/10 overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 px-4 border-b border-white/10">
           <span className="text-slate-500">🔎</span>
-          <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKey} placeholder="Jump to any position…"
+          <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKey} placeholder="Search actions & positions…"
             className="flex-1 bg-transparent py-3 text-slate-100 placeholder-slate-500 focus:outline-none" />
         </div>
         <div className="max-h-80 overflow-y-auto py-2">
-          {results.length === 0 && <div className="px-4 py-6 text-center text-slate-500 text-sm">No matches</div>}
-          {results.map((p, i) => (
-            <button key={p.id} onMouseEnter={() => setIdx(i)} onClick={() => onPick(p.id)}
-              className={`w-full text-left px-4 py-2 flex items-center gap-3 transition ${i === idx ? "bg-indigo-500/20" : ""}`}>
-              <RatingPip rating={p.rating} />
-              <span className="flex-1 min-w-0"><span className="block text-sm text-slate-100 truncate">{p.name}</span><span className="block text-[11px] text-slate-500 truncate">{p.group} · {p.summary}</span></span>
-            </button>
-          ))}
+          {items.length === 0 && <div className="px-4 py-6 text-center text-slate-500 text-sm">No matches</div>}
+          {items.map((it, i) => {
+            const header = it.kind !== lastKind ? (it.kind === "cmd" ? "Actions" : "Positions") : null; lastKind = it.kind;
+            return (
+              <React.Fragment key={it.kind + (it.id || it.label)}>
+                {header && <div className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-600">{header}</div>}
+                <button onMouseEnter={() => setIdx(i)} onClick={() => run(it)}
+                  className={`w-full text-left px-4 py-2 flex items-center gap-3 transition ${i === idx ? "bg-indigo-500/20" : ""}`}>
+                  {it.kind === "cmd" ? <span className="w-7 text-center text-base">{it.icon}</span> : <RatingPip rating={it.rating} />}
+                  <span className="flex-1 min-w-0"><span className="block text-sm text-slate-100 truncate">{it.label}</span>{it.sub && <span className="block text-[11px] text-slate-500 truncate">{it.sub}</span>}</span>
+                </button>
+              </React.Fragment>
+            );
+          })}
         </div>
-        <div className="px-4 py-2 border-t border-white/10 text-[10px] text-slate-500 flex gap-4"><span>↑↓ navigate</span><span>↵ open</span><span>esc close</span></div>
+        <div className="px-4 py-2 border-t border-white/10 text-[10px] text-slate-500 flex gap-4"><span>↑↓ navigate</span><span>↵ run / open</span><span>esc close</span></div>
       </div>
     </div>
   );
@@ -4846,31 +4855,44 @@ function App() {
               {toolsOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setToolsOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-60 glass rounded-xl ring-1 ring-white/10 shadow-2xl z-50 p-1.5">
+                  <div className="absolute right-0 mt-2 w-60 glass rounded-xl ring-1 ring-white/10 shadow-2xl z-50 p-1.5 max-h-[80vh] overflow-y-auto">
                     {[
-                      { icon: "🥋", label: "Training Lab", hint: "T", fn: () => openTrain("position") },
-                      { icon: "💪", label: "Athlete · S&C", hint: "W", fn: () => setAthleteOpen(true) },
-                      { icon: "🎯", label: "Drill & Quiz", hint: "D", fn: () => setDrillOpen(true) },
-                      { icon: "🎴", label: "Study Deck", hint: "", fn: () => setStudyOpen(true) },
-                      { icon: "🧠", label: "Game Plans", hint: "P", fn: () => setPlansOpen(true) },
-                      { icon: "🗺️", label: "Flow Map", hint: "M", fn: () => setMapOpen(true) },
-                      { icon: "📒", label: "Training Journal", hint: "J", fn: () => setJournalOpen(true) },
-                      { icon: "💡", label: "Insights", hint: "I", fn: () => setInsightsOpen(true) },
-                      { icon: "🏆", label: "Goals & Badges", hint: "G", fn: () => setGoalsOpen(true) },
-                      { icon: "📤", label: "Share Card", hint: "", fn: () => setShareOpen(true) },
-                      { icon: "⏱️", label: "Round Timer", hint: "", fn: () => setTimerOpen(true) },
-                      { icon: "📝", label: "Notes Hub", hint: "N", fn: () => setNotesOpen(true) },
-                      { icon: "📊", label: "Dashboard", hint: "S", fn: () => setDashOpen(true) },
-                      { icon: "📄", label: "Export / Print", hint: "", fn: exportProgram },
-                      { icon: "⚙️", label: "Settings", hint: "", fn: () => setSettingsOpen(true) },
-                      { icon: "❓", label: "Guide / intro", hint: "?", fn: () => setWelcomeOpen(true) },
-                    ].map(it => (
-                      <button key={it.label} onClick={() => { setToolsOpen(false); it.fn(); }}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-ink-700/70 transition">
-                        <span className="text-base w-5 text-center">{it.icon}</span>
-                        <span className="flex-1 text-sm text-slate-200">{it.label}</span>
-                        {it.hint && <kbd className="px-1.5 rounded bg-ink-700 border border-white/10 text-[10px] text-slate-400">{it.hint}</kbd>}
-                      </button>
+                      { title: "Learn", items: [
+                        { icon: "🥋", label: "Training Lab", hint: "T", fn: () => openTrain("position") },
+                        { icon: "🎴", label: "Study Deck", hint: "", fn: () => setStudyOpen(true) },
+                        { icon: "🎯", label: "Drill & Quiz", hint: "D", fn: () => setDrillOpen(true) },
+                        { icon: "🗺️", label: "Flow Map", hint: "M", fn: () => setMapOpen(true) },
+                      ] },
+                      { title: "Plan", items: [
+                        { icon: "🧠", label: "Game Plans", hint: "P", fn: () => setPlansOpen(true) },
+                        { icon: "💡", label: "Insights", hint: "I", fn: () => setInsightsOpen(true) },
+                        { icon: "🏆", label: "Goals & Badges", hint: "G", fn: () => setGoalsOpen(true) },
+                      ] },
+                      { title: "Track", items: [
+                        { icon: "📒", label: "Training Journal", hint: "J", fn: () => setJournalOpen(true) },
+                        { icon: "📊", label: "Dashboard", hint: "S", fn: () => setDashOpen(true) },
+                        { icon: "📝", label: "Notes Hub", hint: "N", fn: () => setNotesOpen(true) },
+                      ] },
+                      { title: "Tools", items: [
+                        { icon: "💪", label: "Athlete · S&C", hint: "W", fn: () => setAthleteOpen(true) },
+                        { icon: "⏱️", label: "Round Timer", hint: "", fn: () => setTimerOpen(true) },
+                        { icon: "📤", label: "Share Card", hint: "", fn: () => setShareOpen(true) },
+                        { icon: "📄", label: "Export / Print", hint: "", fn: exportProgram },
+                        { icon: "⚙️", label: "Settings", hint: "", fn: () => setSettingsOpen(true) },
+                        { icon: "❓", label: "Guide / intro", hint: "?", fn: () => setWelcomeOpen(true) },
+                      ] },
+                    ].map(grp => (
+                      <div key={grp.title}>
+                        <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-600">{grp.title}</div>
+                        {grp.items.map(it => (
+                          <button key={it.label} onClick={() => { setToolsOpen(false); it.fn(); }}
+                            className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-left hover:bg-ink-700/70 transition">
+                            <span className="text-base w-5 text-center">{it.icon}</span>
+                            <span className="flex-1 text-sm text-slate-200">{it.label}</span>
+                            {it.hint && <kbd className="px-1.5 rounded bg-ink-700 border border-white/10 text-[10px] text-slate-400">{it.hint}</kbd>}
+                          </button>
+                        ))}
+                      </div>
                     ))}
                   </div>
                 </>
@@ -5043,6 +5065,27 @@ function App() {
         onClose={() => setDrillOpen(false)} />}
 
       {cmdkOpen && <CommandPalette
+        commands={[
+          { icon: "🥋", label: "Training Lab", run: () => openTrain("position") },
+          { icon: "🎴", label: "Study Deck", run: () => setStudyOpen(true) },
+          { icon: "🎯", label: "Drill & Quiz", run: () => setDrillOpen(true) },
+          { icon: "💪", label: "Athlete · S&C", run: () => setAthleteOpen(true) },
+          { icon: "🧠", label: "Game Plans", run: () => setPlansOpen(true) },
+          { icon: "🗺️", label: "Flow Map", run: () => setMapOpen(true) },
+          { icon: "💡", label: "Insights", run: () => setInsightsOpen(true) },
+          { icon: "🏆", label: "Goals & Badges", run: () => setGoalsOpen(true) },
+          { icon: "📒", label: "Training Journal", run: () => setJournalOpen(true) },
+          { icon: "📝", label: "Notes Hub", run: () => setNotesOpen(true) },
+          { icon: "⏱️", label: "Round Timer", run: () => setTimerOpen(true) },
+          { icon: "📤", label: "Share Card", run: () => setShareOpen(true) },
+          { icon: "📊", label: "Dashboard", run: () => setDashOpen(true) },
+          { icon: "📄", label: "Export / Print program", run: () => exportProgram() },
+          { icon: "⚙️", label: "Settings", run: () => setSettingsOpen(true) },
+          { icon: "❓", label: "Guide / intro", run: () => setWelcomeOpen(true) },
+          { icon: "▶️", label: "Follow my game plan", run: () => followPlan() },
+          { icon: "↩️", label: "Back", run: () => back() },
+          { icon: "♻️", label: "Reset to standing", run: () => reset() },
+        ]}
         onPick={(id) => { goTo(id, { viaArchive: true }); setCmdkOpen(false); }}
         onClose={() => setCmdkOpen(false)} />}
 
