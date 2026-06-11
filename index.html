@@ -2761,7 +2761,8 @@ function shuffle(arr) {
   return a;
 }
 
-function DrillModal({ activePlan, srs = {}, drillAgg = { seen: 0, correct: 0 }, onRecord, onJump, onClose }) {
+function DrillModal({ activePlan, srs = {}, drillAgg = { seen: 0, correct: 0 }, focusId = null, onRecord, onJump, onClose }) {
+  const focusPos = focusId && POSITIONS[focusId] && POSITIONS[focusId].transitions.length ? POSITIONS[focusId] : null;
   const planPicks = activePlan ? Object.entries(activePlan.picks) : [];
   const allPos = React.useMemo(() => Object.values(POSITIONS), []);
   const nonSub = React.useMemo(() => allPos.filter(p => p.group !== "Submissions"), [allPos]);
@@ -2775,7 +2776,7 @@ function DrillModal({ activePlan, srs = {}, drillAgg = { seen: 0, correct: 0 }, 
     { id: "transition", label: "Transition Quiz", enabled: true },
     { id: "hierarchy", label: "Hierarchy Quiz", enabled: true },
   ];
-  const [mode, setMode] = React.useState(planPicks.length ? "recall" : "transition");
+  const [mode, setMode] = React.useState(focusPos ? "transition" : planPicks.length ? "recall" : "transition");
   const [score, setScore] = React.useState({ c: 0, n: 0 });
   const [streak, setStreak] = React.useState(0);
   const [q, setQ] = React.useState(null);
@@ -2789,12 +2790,16 @@ function DrillModal({ activePlan, srs = {}, drillAgg = { seen: 0, correct: 0 }, 
 
   function genTransition() {
     let p, t;
+    // If launched from a specific position, mostly quiz that position.
+    if (focusPos && Math.random() < 0.7) { p = focusPos; t = rand(p.transitions); }
     // 50% of the time, resurface a "due" (previously-missed / low-box) item.
-    const weak = Object.keys(srs).filter(k => k.includes("|") && srs[k].box < 3);
-    if (weak.length && Math.random() < 0.5) {
-      const [posId, label] = rand(weak).split("|");
-      p = POSITIONS[posId];
-      t = p && p.transitions.find(x => x.label === label);
+    if (!p) {
+      const weak = Object.keys(srs).filter(k => k.includes("|") && srs[k].box < 3);
+      if (weak.length && Math.random() < 0.5) {
+        const [posId, label] = rand(weak).split("|");
+        p = POSITIONS[posId];
+        t = p && p.transitions.find(x => x.label === label);
+      }
     }
     if (!p || !t) { p = rand(nonSub.filter(x => x.transitions.length)); t = rand(p.transitions); }
     const distract = sampleIds(allPos.map(x => x.id), 3, [t.to, p.id]);
@@ -4141,10 +4146,10 @@ function deckFor(scope, learnedSet, favSet) {
   return shuffle(list.map(p => p.id));
 }
 
-function StudyModal({ learned, favorites, onToggleLearned, onJump, onClose }) {
+function StudyModal({ learned, favorites, initialScope = "learn", onToggleLearned, onJump, onClose }) {
   const learnedSet = new Set(learned), favSet = new Set(favorites);
-  const [scope, setScope] = React.useState("learn");
-  const [deck, setDeck] = React.useState(() => deckFor("learn", learnedSet, favSet));
+  const [scope, setScope] = React.useState(initialScope);
+  const [deck, setDeck] = React.useState(() => deckFor(initialScope, learnedSet, favSet));
   const [idx, setIdx] = React.useState(0);
   const [flipped, setFlipped] = React.useState(false);
   React.useEffect(() => { setDeck(deckFor(scope, new Set(learned), favSet)); setIdx(0); setFlipped(false); /* eslint-disable-next-line */ }, [scope]);
@@ -4548,6 +4553,8 @@ function App() {
   const [timerOpen, setTimerOpen] = React.useState(false);
   const [notesOpen, setNotesOpen] = React.useState(false);
   const [studyOpen, setStudyOpen] = React.useState(false);
+  const [drillFocus, setDrillFocus] = React.useState(null);
+  const [studyScope, setStudyScope] = React.useState("learn");
   const [trainTab, setTrainTab] = React.useState("position");
   const dismissWelcome = () => { setSeen(true); setWelcomeOpen(false); };
 
@@ -4565,13 +4572,15 @@ function App() {
   const addRoll = (entry) => setRolls(r => [{ id: Date.now(), ...entry }, ...r].slice(0, 300));
   const deleteRoll = (id) => setRolls(r => r.filter(e => e.id !== id));
   const openTrain = (tab) => { setTrainTab(tab || "position"); setTrainOpen(true); };
+  const openDrill = (id) => { setDrillFocus(id || null); openDrill(); };
+  const openStudy = (sc) => { setStudyScope(sc || "learn"); openStudy(); };
   const markMissionDone = (date) => setMission({ date, done: true });
   const onInsightAction = (a) => {
     setInsightsOpen(false);
     switch (a.type) {
       case "jump": goTo(a.id, { viaArchive: true }); break;
       case "jumpGroup": { const p = Object.values(POSITIONS).find(x => x.group === a.group); if (p) goTo(p.id, { viaArchive: true }); break; }
-      case "drill": setDrillOpen(true); break;
+      case "drill": openDrill(); break;
       case "plans": setPlansOpen(true); break;
       case "journal": setJournalOpen(true); break;
       case "insights": setInsightsOpen(true); break;
@@ -4766,7 +4775,7 @@ function App() {
         case "r": reset(); break;
         case "m": setMapOpen(true); break;
         case "p": setPlansOpen(true); break;
-        case "d": setDrillOpen(true); break;
+        case "d": openDrill(); break;
         case "t": openTrain("position"); break;
         case "w": setAthleteOpen(true); break;
         case "j": setJournalOpen(true); break;
@@ -4808,7 +4817,7 @@ function App() {
           tools={[
             { icon: "🥋", label: "Train", fn: () => { openTrain("position"); setSidebarOpen(false); } },
             { icon: "💪", label: "Athlete", fn: () => { setAthleteOpen(true); setSidebarOpen(false); } },
-            { icon: "🎯", label: "Drill", fn: () => { setDrillOpen(true); setSidebarOpen(false); } },
+            { icon: "🎯", label: "Drill", fn: () => { openDrill(); setSidebarOpen(false); } },
             { icon: "🧠", label: "Plans", fn: () => { setPlansOpen(true); setSidebarOpen(false); } },
             { icon: "📒", label: "Journal", fn: () => { setJournalOpen(true); setSidebarOpen(false); } },
             { icon: "💡", label: "Insights", fn: () => { setInsightsOpen(true); setSidebarOpen(false); } },
@@ -4859,8 +4868,8 @@ function App() {
                     {[
                       { title: "Learn", items: [
                         { icon: "🥋", label: "Training Lab", hint: "T", fn: () => openTrain("position") },
-                        { icon: "🎴", label: "Study Deck", hint: "", fn: () => setStudyOpen(true) },
-                        { icon: "🎯", label: "Drill & Quiz", hint: "D", fn: () => setDrillOpen(true) },
+                        { icon: "🎴", label: "Study Deck", hint: "", fn: () => openStudy() },
+                        { icon: "🎯", label: "Drill & Quiz", hint: "D", fn: () => openDrill() },
                         { icon: "🗺️", label: "Flow Map", hint: "M", fn: () => setMapOpen(true) },
                       ] },
                       { title: "Plan", items: [
@@ -5023,6 +5032,11 @@ function App() {
               <NotesCard value={notes[currentId]} onChange={(v) => setNote(currentId, v)} />
             </div>
 
+            {/* Practice quick-actions */}
+            <div className="mb-4 flex flex-wrap gap-2">
+              <button onClick={() => openDrill(currentId)} className="text-sm px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-400/30 transition">🎯 Quiz this position</button>
+              <button onClick={() => openStudy(pos.group)} className="text-sm px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-200 border border-indigo-400/30 transition">🎴 Study {pos.group}</button>
+            </div>
             {/* Transitions */}
             <div className="mb-2 flex items-center gap-3 flex-wrap">
               <h2 className="font-display text-lg font-semibold text-white">Available Actions</h2>
@@ -5060,15 +5074,15 @@ function App() {
         onJump={(id) => { goTo(id, { viaArchive: true }); setPlansOpen(false); }}
         onClose={() => setPlansOpen(false)} />}
 
-      {drillOpen && <DrillModal activePlan={activePlan} srs={srs} drillAgg={drillAgg} onRecord={recordDrill}
+      {drillOpen && <DrillModal activePlan={activePlan} srs={srs} drillAgg={drillAgg} focusId={drillFocus} onRecord={recordDrill}
         onJump={(id) => { goTo(id, { viaArchive: true }); setDrillOpen(false); }}
         onClose={() => setDrillOpen(false)} />}
 
       {cmdkOpen && <CommandPalette
         commands={[
           { icon: "🥋", label: "Training Lab", run: () => openTrain("position") },
-          { icon: "🎴", label: "Study Deck", run: () => setStudyOpen(true) },
-          { icon: "🎯", label: "Drill & Quiz", run: () => setDrillOpen(true) },
+          { icon: "🎴", label: "Study Deck", run: () => openStudy() },
+          { icon: "🎯", label: "Drill & Quiz", run: () => openDrill() },
           { icon: "💪", label: "Athlete · S&C", run: () => setAthleteOpen(true) },
           { icon: "🧠", label: "Game Plans", run: () => setPlansOpen(true) },
           { icon: "🗺️", label: "Flow Map", run: () => setMapOpen(true) },
@@ -5129,7 +5143,7 @@ function App() {
 
       {notesOpen && <NotesHubModal notes={notes} onJump={(id) => { goTo(id, { viaArchive: true }); setNotesOpen(false); }} onClose={() => setNotesOpen(false)} />}
 
-      {studyOpen && <StudyModal learned={learned} favorites={favorites} onToggleLearned={toggleLearned} onJump={(id) => { goTo(id, { viaArchive: true }); setStudyOpen(false); }} onClose={() => setStudyOpen(false)} />}
+      {studyOpen && <StudyModal learned={learned} favorites={favorites} initialScope={studyScope} onToggleLearned={toggleLearned} onJump={(id) => { goTo(id, { viaArchive: true }); setStudyOpen(false); }} onClose={() => setStudyOpen(false)} />}
     </div>
   );
 }
