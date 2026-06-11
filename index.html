@@ -2978,6 +2978,7 @@ function SettingsModal({ settings, onChange, onClose }) {
           <Toggle k="colorblind" label="Colorblind-safe colors" desc="Blue/orange rating palette instead of green/red." />
           <Toggle k="reduceMotion" label="Reduce motion" desc="Disable transitions and entrance animations." />
           <Toggle k="showPoints" label="Show IBJJF points" desc="Display point values on scoring actions." />
+          <Toggle k="imageFolder" label="Auto-load images/ folder" desc="Show images/<id>.jpg per position if present (for deploys)." />
         </div>
         <div className="mt-5 pt-4 border-t border-white/10">
           <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Your Data</h3>
@@ -4183,6 +4184,68 @@ function StudyModal({ learned, favorites, initialScope = "learn", onToggleLearne
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//  IMAGE STUDIO — manage real photos for every position (prompts + paste/auto)
+//////////////////////////////////////////////////////////////////////////////
+
+const IMAGE_STYLE_PREFIX = "High-definition studio photograph, two Brazilian Jiu-Jitsu athletes — one in a navy-blue gi, one in a white gi — clean light-grey seamless background, soft cinematic key light, 50mm, shallow depth of field, crisp focus, instructional clarity, --ar 4:3. Subject: ";
+
+function StudioCard({ p, url, onSet, onClear }) {
+  const [err, setErr] = React.useState(false);
+  const [v, setV] = React.useState(url || "");
+  const [copied, setCopied] = React.useState(false);
+  React.useEffect(() => { setV(url || ""); setErr(false); }, [url]);
+  return (
+    <div className="rounded-xl glass ring-1 ring-white/5 p-2.5">
+      <div className="aspect-[4/3] rounded-lg overflow-hidden relative bg-black mb-2">
+        <div className="absolute inset-0 [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: matSceneSVG(p.layout) }} />
+        {url && !err && <img src={url} onError={() => setErr(true)} className="absolute inset-0 w-full h-full object-cover" alt={p.name} />}
+        {url && !err && <span className="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/85 text-white font-semibold">PHOTO</span>}
+      </div>
+      <div className="text-xs font-semibold text-slate-100 truncate">{p.name}</div>
+      <div className="text-[10px] text-slate-500 mb-1.5 leading-snug line-clamp-2">{p.imagePrompt}</div>
+      <div className="flex gap-1">
+        <input value={v} onChange={e => setV(e.target.value)} placeholder="Paste image URL" className="flex-1 min-w-0 bg-ink-850 border border-white/10 rounded px-2 py-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500/40" />
+        <button onClick={() => onSet(p.id, v.trim())} className="text-[11px] px-2 py-1 rounded bg-indigo-500 hover:bg-indigo-400 text-white">Set</button>
+      </div>
+      <div className="flex items-center gap-2 mt-1">
+        <button onClick={() => { navigator.clipboard && navigator.clipboard.writeText(IMAGE_STYLE_PREFIX + p.imagePrompt); setCopied(true); setTimeout(() => setCopied(false), 1200); }} className="text-[10px] text-sky-300 hover:text-sky-200">{copied ? "✓ copied" : "copy prompt"}</button>
+        {url && <button onClick={() => onClear(p.id)} className="text-[10px] text-slate-500 hover:text-rose-300 ml-auto">clear</button>}
+      </div>
+    </div>
+  );
+}
+
+function ImageStudioModal({ images, settings, onSet, onClear, onToggleFolder, onClose }) {
+  const all = Object.values(POSITIONS);
+  const [copied, setCopied] = React.useState(false);
+  const have = all.filter(p => images[p.id] || DEFAULT_IMAGES[p.id]).length;
+  const copyAll = () => { const t = all.map((p, i) => `${i + 1}. [${p.id}]\n${IMAGE_STYLE_PREFIX}${p.imagePrompt}`).join("\n\n"); navigator.clipboard && navigator.clipboard.writeText(t); setCopied(true); setTimeout(() => setCopied(false), 1600); };
+  const folderOn = !!settings.imageFolder;
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink-950/85 backdrop-blur-sm">
+      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3 flex-wrap">
+        <span className="text-lg">🖼️</span><h2 className="font-display font-semibold text-white">Image Studio</h2>
+        <span className="text-xs text-slate-500">{have}/{all.length} with photos</span>
+        <button onClick={copyAll} className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">{copied ? "✓ Copied" : "📋 Copy all 46 prompts"}</button>
+        <button onClick={onToggleFolder} className={`text-xs px-2.5 py-1.5 rounded-lg border transition ${folderOn ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/40" : "bg-ink-700 text-slate-400 border-white/5"}`}>{folderOn ? "✓ " : ""}Auto-load images/ folder</button>
+        <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5">
+          <p className="text-xs text-slate-500 mb-4">Generate a photo per position with the prompt (copy it → Midjourney/DALL·E/Flux), then paste its URL below. Or deploy with an <span className="font-mono text-slate-400">images/&lt;id&gt;.jpg</span> folder and flip “Auto-load” — files appear automatically, diagram stays as fallback. Resolution order: clip → photo → diagram.</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {all.map(p => {
+              const url = images[p.id] || DEFAULT_IMAGES[p.id] || (folderOn ? "images/" + p.id + ".jpg" : null);
+              return <StudioCard key={p.id} p={p} url={url} onSet={onSet} onClear={onClear} />;
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //  NOTES HUB — browse & search all per-position notes in one place
 //////////////////////////////////////////////////////////////////////////////
 
@@ -4526,6 +4589,7 @@ function App() {
   const [notesOpen, setNotesOpen] = React.useState(false);
   const [studyOpen, setStudyOpen] = React.useState(false);
   const [drillFocus, setDrillFocus] = React.useState(null);
+  const [imgStudioOpen, setImgStudioOpen] = React.useState(false);
   const [studyScope, setStudyScope] = React.useState("learn");
   const [trainTab, setTrainTab] = React.useState("position");
   const dismissWelcome = () => { setSeen(true); setWelcomeOpen(false); };
@@ -4577,7 +4641,7 @@ function App() {
   const [images, setImages] = useLocalStorage("bjjflow:images", {});
   const setImage = (id, url) => setImages(v => (url ? { ...v, [id]: url } : (() => { const n = { ...v }; delete n[id]; return n; })()));
   const clearImage = (id) => setImages(v => { const n = { ...v }; delete n[id]; return n; });
-  const getImage = (id) => images[id] || DEFAULT_IMAGES[id] || null;
+  const getImage = (id) => images[id] || DEFAULT_IMAGES[id] || (settings.imageFolder ? "images/" + id + ".jpg" : null);
 
   // colorblind palette is read by the module-level ratingColor()
   setColorblind(!!settings.colorblind);
@@ -4741,10 +4805,10 @@ function App() {
     const onKey = (e) => {
       const tag = (e.target.tagName || "").toLowerCase();
       const typing = tag === "input" || tag === "textarea" || e.target.isContentEditable;
-      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen || insightsOpen || goalsOpen || shareOpen || timerOpen || notesOpen || studyOpen;
+      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen || insightsOpen || goalsOpen || shareOpen || timerOpen || notesOpen || studyOpen || imgStudioOpen;
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setCmdkOpen(v => !v); return; }
       if (typing) return;
-      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); setInsightsOpen(false); setGoalsOpen(false); setShareOpen(false); setTimerOpen(false); setNotesOpen(false); setStudyOpen(false); return; }
+      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); setInsightsOpen(false); setGoalsOpen(false); setShareOpen(false); setTimerOpen(false); setNotesOpen(false); setStudyOpen(false); setImgStudioOpen(false); return; }
       if (anyModal) return;
       if (/^[1-9]$/.test(e.key)) { const t = pos.transitions[+e.key - 1]; if (t) goTo(t.to); return; }
       switch (e.key.toLowerCase()) {
@@ -4863,6 +4927,7 @@ function App() {
                         { icon: "💪", label: "Athlete · S&C", hint: "W", fn: () => setAthleteOpen(true) },
                         { icon: "⏱️", label: "Round Timer", hint: "", fn: () => setTimerOpen(true) },
                         { icon: "📤", label: "Share Card", hint: "", fn: () => setShareOpen(true) },
+                        { icon: "🖼️", label: "Image Studio", hint: "", fn: () => setImgStudioOpen(true) },
                         { icon: "📄", label: "Export / Print", hint: "", fn: exportProgram },
                         { icon: "⚙️", label: "Settings", hint: "", fn: () => setSettingsOpen(true) },
                         { icon: "❓", label: "Guide / intro", hint: "?", fn: () => setWelcomeOpen(true) },
@@ -5125,6 +5190,11 @@ function App() {
       {notesOpen && <NotesHubModal notes={notes} onJump={(id) => { goTo(id, { viaArchive: true }); setNotesOpen(false); }} onClose={() => setNotesOpen(false)} />}
 
       {studyOpen && <StudyModal learned={learned} favorites={favorites} initialScope={studyScope} onToggleLearned={toggleLearned} onJump={(id) => { goTo(id, { viaArchive: true }); setStudyOpen(false); }} onClose={() => setStudyOpen(false)} />}
+
+      {imgStudioOpen && <ImageStudioModal images={images} settings={settings}
+        onSet={(id, u) => setImage(id, u)} onClear={(id) => clearImage(id)}
+        onToggleFolder={() => setSettings({ ...settings, imageFolder: !settings.imageFolder })}
+        onClose={() => setImgStudioOpen(false)} />}
     </div>
   );
 }
