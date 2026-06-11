@@ -4,6 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SubMap — Interactive BJJ Position & Submission Map</title>
+  <meta name="description" content="SubMap — an interactive Brazilian Jiu-Jitsu position & submission map: flow through every transition, build game plans, drill with quizzes, track training, and prep for competition. Free, no login." />
+  <meta name="theme-color" content="#070a12" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SubMap" />
+  <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNjM2NmYxIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTBiOTgxIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMwYjBmMWEiLz48cmVjdCB4PSI4IiB5PSI4IiB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHJ4PSIxMiIgZmlsbD0idXJsKCNnKSIvPjx0ZXh0IHg9IjMyIiB5PSI0NCIgZm9udC1mYW1pbHk9IkFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMzQiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlM8L3RleHQ+PC9zdmc+" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNjM2NmYxIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTBiOTgxIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMwYjBmMWEiLz48cmVjdCB4PSI4IiB5PSI4IiB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHJ4PSIxMiIgZmlsbD0idXJsKCNnKSIvPjx0ZXh0IHg9IjMyIiB5PSI0NCIgZm9udC1mYW1pbHk9IkFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMzQiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlM8L3RleHQ+PC9zdmc+" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="SubMap — Interactive BJJ Position & Submission Map" />
+  <meta property="og:description" content="Flow through every BJJ transition, build your game plan, drill it, and track your training. Free, no login." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="SubMap — Interactive BJJ Position & Submission Map" />
+  <meta name="twitter:description" content="Flow through every BJJ transition, build your game plan, drill it, and track your training. Free, no login." />
+  <!-- After deploying, set og:image / twitter:image to a hosted 1200x630 card URL for rich link previews. -->
 
   <!--
   ============================================================================
@@ -2999,6 +3013,8 @@ function SettingsModal({ settings, onChange, onClose }) {
           </div>
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden"
             onChange={e => { const f = e.target.files[0]; if (f) importData(f, ok => ok ? location.reload() : setMsg("Couldn't read that file.")); }} />
+          <button onClick={() => { if (window.confirm("Load sample data? This replaces current data on this device.")) loadSampleData(); }}
+            className="w-full mt-2 text-xs px-2 py-2 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-300 border border-white/5 transition">★ Load sample data to explore</button>
           {msg && <p className="text-[11px] text-slate-400 mt-2">{msg}</p>}
         </div>
       </div>
@@ -3516,7 +3532,8 @@ function WelcomeModal({ onClose }) {
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[11px] text-slate-500">Everything saves locally in your browser.</span>
+          <button onClick={loadSampleData} className="text-[11px] text-indigo-300 hover:text-indigo-200 underline underline-offset-2">Explore with sample data</button>
+          <span className="text-[11px] text-slate-500 hidden sm:inline">· saved locally</span>
           <button onClick={onClose} className="ml-auto px-5 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold transition">Start exploring →</button>
         </div>
       </div>
@@ -4096,6 +4113,89 @@ function InsightsModal({ sessions, rolls, learned, srs, drillAgg, activePlan, pr
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//  SHARE CARD — a downloadable 1200x630 stats card for social
+//////////////////////////////////////////////////////////////////////////////
+
+function shareCardSVG(d) {
+  const belt = BELTS[d.belt] || "#e7ebf5";
+  const stripeCol = d.belt === "Black" ? "#ef4444" : "#111827";
+  const esc = x => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const tiles = [[d.matHours + "h", "MAT TIME"], [d.sessions, "SESSIONS"], [d.streak, "WEEK STREAK"], [esc(d.topSub), "GO-TO FINISH"], [esc(d.record), "RECORD"], [d.learnedPct + "%", "MAP LEARNED"]];
+  const tile = (x, y, v, l) => `<rect x="${x}" y="${y}" width="350" height="120" rx="16" fill="#141a2b" stroke="#ffffff14"/><text x="${x + 24}" y="${y + 64}" font-family="Arial,sans-serif" font-size="40" font-weight="700" fill="#fff">${v}</text><text x="${x + 24}" y="${y + 94}" font-family="Arial,sans-serif" font-size="15" fill="#94a3b8" letter-spacing="1.5">${l}</text>`;
+  let t = ""; tiles.forEach((tl, i) => { const col = i % 3, row = (i / 3 | 0); t += tile(60 + col * 370, 330 + row * 140, tl[0], tl[1]); });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+   <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#10b981"/></linearGradient></defs>
+   <rect width="1200" height="630" fill="#0b0f1a"/>
+   <ellipse cx="120" cy="0" rx="700" ry="380" fill="#6366f1" opacity="0.16"/>
+   <ellipse cx="1200" cy="120" rx="620" ry="320" fill="#10b981" opacity="0.10"/>
+   <rect x="60" y="48" width="56" height="56" rx="14" fill="url(#lg)"/>
+   <text x="88" y="88" font-family="Arial,sans-serif" font-size="30" font-weight="700" fill="#fff" text-anchor="middle">S</text>
+   <text x="130" y="78" font-family="Arial,sans-serif" font-size="30" font-weight="700" fill="#fff">SubMap</text>
+   <text x="131" y="100" font-family="Arial,sans-serif" font-size="14" fill="#64748b" letter-spacing="2">BJJ POSITION MAP</text>
+   <rect x="60" y="150" width="120" height="120" rx="22" fill="${belt}" stroke="#ffffff26" stroke-width="3"/>
+   ${[0, 1, 2, 3].map(i => `<rect x="${80 + i * 24}" y="178" width="9" height="64" rx="3" fill="${i < d.stripes ? stripeCol : "#ffffff33"}"/>`).join("")}
+   <text x="208" y="206" font-family="Arial,sans-serif" font-size="44" font-weight="700" fill="#fff">${esc(d.belt)} Belt</text>
+   <text x="210" y="248" font-family="Arial,sans-serif" font-size="24" fill="#a5b4fc">Level ${d.level}${d.stripes ? ` · ${d.stripes} stripe${d.stripes !== 1 ? "s" : ""}` : ""}</text>
+   ${t}
+   <text x="60" y="602" font-family="Arial,sans-serif" font-size="20" fill="#64748b">Mapping my jiu-jitsu with SubMap</text>
+  </svg>`;
+}
+
+function ShareModal({ sessions, rolls, learned, drillAgg, plans, activePlan, promotions, comps, profile, onClose }) {
+  const c = statsCtx({ sessions, rolls, learned, drillAgg, plans, activePlan, promotions, profile });
+  const topSub = (() => { const m = {}; rolls.forEach(r => (r.hit || []).forEach(s => { m[s] = (m[s] || 0) + 1; })); const e = Object.entries(m).sort((a, b) => b[1] - a[1])[0]; return e ? e[0] : "—"; })();
+  const cw = comps.reduce((n, x) => n + (+x.wins || 0), 0), cl = comps.reduce((n, x) => n + (+x.losses || 0), 0);
+  const data = { belt: profile.belt || "White", stripes: profile.stripes || 0, level: levelInfo(computeXP(c)).level, streak: c.streakWeeks, matHours: c.matHours, sessions: c.sessions.length, topSub, record: comps.length ? `${cw}-${cl}` : `${c.subsHit} subs`, learnedPct: c.learnedPct };
+  const svg = shareCardSVG(data);
+  const [copied, setCopied] = React.useState(false);
+  const download = () => {
+    const img = new Image();
+    img.onload = () => { const cv = document.createElement("canvas"); cv.width = 1200; cv.height = 630; cv.getContext("2d").drawImage(img, 0, 0); cv.toBlob(b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "submap-card.png"; a.click(); }); };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+  };
+  const copyText = () => { navigator.clipboard && navigator.clipboard.writeText(`Mapping my jiu-jitsu with SubMap 🥋\n${data.belt} belt · Level ${data.level} · ${data.streak}-week streak · ${data.matHours}h mat time · go-to: ${data.topSub}`); setCopied(true); setTimeout(() => setCopied(false), 1500); };
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-ink-950/80 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-2xl glass rounded-2xl ring-1 ring-white/10 p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-lg">📤</span><h2 className="font-display font-semibold text-white">Share Card</h2>
+          <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+        </div>
+        <div className="rounded-xl overflow-hidden ring-1 ring-white/10 [&>svg]:w-full [&>svg]:h-auto [&>svg]:block" dangerouslySetInnerHTML={{ __html: svg }} />
+        <div className="flex gap-2 mt-4">
+          <button onClick={download} className="flex-1 text-sm px-4 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold transition">⬇ Download PNG</button>
+          <button onClick={copyText} className="text-sm px-4 py-2.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200 border border-white/10 transition">{copied ? "✓ Copied" : "Copy caption"}</button>
+        </div>
+        <p className="text-[11px] text-slate-500 mt-2 text-center">A 1200×630 card from your stats — perfect for posting on X/Instagram.</p>
+      </div>
+    </div>
+  );
+}
+
+// Populate localStorage with realistic sample data so new users can explore.
+function loadSampleData() {
+  const t = new Date(); const iso = d => d.toISOString().slice(0, 10); const ago = n => { const d = new Date(t); d.setDate(d.getDate() - n); return iso(d); };
+  const partners = ["Marcus", "Dani", "Priya", "Kenji"]; const subs = ["Armbar", "Triangle Choke", "Rear Naked Choke", "Kimura", "Guillotine Choke", "Heel Hook"];
+  const sessions = []; for (let i = 0; i < 16; i++) sessions.push({ id: Date.now() + i, date: ago(i * 3 + (i % 2)), type: ["Gi", "No-Gi", "Open Mat"][i % 3], length: [60, 75, 90][i % 3], rounds: 5, note: "" });
+  const rolls = []; for (let i = 0; i < 14; i++) rolls.push({ id: Date.now() + 200 + i, date: ago(i * 2), partner: partners[i % 4], hit: [subs[i % 6]], taken: i % 2 === 0 ? ["Heel Hook"] : [], note: "" });
+  const set = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+  set("bjjflow:sessions", sessions);
+  set("bjjflow:rolls", rolls);
+  set("bjjflow:learned", ["standing", "closed-guard-bottom", "closed-guard-top", "dlr-bottom", "butterfly-bottom", "half-bottom", "side-top", "mount-top", "back-attacker", "ashi", "saddle", "fifty-fifty", "sub-armbar", "sub-rnc", "sub-triangle"]);
+  const planId = Date.now() + 9;
+  set("bjjflow:plans", [{ id: planId, name: "My Leg-Lock A-Game", style: "Leg Locker", picks: { ...STYLE_PRESETS["Leg Locker"].picks } }]);
+  set("bjjflow:activePlan", planId);
+  set("bjjflow:promotions", [{ id: Date.now() + 10, date: ago(700), belt: "White", stripes: 4, note: "" }, { id: Date.now() + 11, date: ago(160), belt: "Blue", stripes: 1, note: "Prof. Silva" }]);
+  set("bjjflow:comps", [{ id: Date.now() + 12, date: ago(40), event: "Local Open", format: "Gi", division: "Blue / Medium", wins: 3, losses: 1, subs: 2, place: "Silver", note: "" }]);
+  set("bjjflow:profile", { belt: "Blue", stripes: 1, since: ago(720), weeklyGoal: 3, name: "" });
+  set("bjjflow:drillAgg", { seen: 48, correct: 39 });
+  set("bjjflow:favs", ["dlr-bottom", "ashi", "back-attacker"]);
+  set("bjjflow:goals", [{ id: Date.now() + 13, metric: "sessions", target: 50 }, { id: Date.now() + 14, metric: "matHours", target: 100 }]);
+  set("bjjflow:seen", true);
+  location.reload();
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //  TODAY — home widget on the Standing position (streak, goal, quick start)
 //////////////////////////////////////////////////////////////////////////////
 
@@ -4217,6 +4317,7 @@ function App() {
   const [goals, setGoals] = useLocalStorage("bjjflow:goals", []);
   const [mission, setMission] = useLocalStorage("bjjflow:mission", { date: "", done: false });
   const [comps, setComps] = useLocalStorage("bjjflow:comps", []);
+  const [shareOpen, setShareOpen] = React.useState(false);
   const [trainTab, setTrainTab] = React.useState("position");
   const dismissWelcome = () => { setSeen(true); setWelcomeOpen(false); };
 
@@ -4424,10 +4525,10 @@ function App() {
     const onKey = (e) => {
       const tag = (e.target.tagName || "").toLowerCase();
       const typing = tag === "input" || tag === "textarea" || e.target.isContentEditable;
-      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen || insightsOpen || goalsOpen;
+      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen || insightsOpen || goalsOpen || shareOpen;
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setCmdkOpen(v => !v); return; }
       if (typing) return;
-      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); setInsightsOpen(false); setGoalsOpen(false); return; }
+      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); setInsightsOpen(false); setGoalsOpen(false); setShareOpen(false); return; }
       if (anyModal) return;
       if (/^[1-9]$/.test(e.key)) { const t = pos.transitions[+e.key - 1]; if (t) goTo(t.to); return; }
       switch (e.key.toLowerCase()) {
@@ -4533,6 +4634,7 @@ function App() {
                       { icon: "📒", label: "Training Journal", hint: "J", fn: () => setJournalOpen(true) },
                       { icon: "💡", label: "Insights", hint: "I", fn: () => setInsightsOpen(true) },
                       { icon: "🏆", label: "Goals & Badges", hint: "G", fn: () => setGoalsOpen(true) },
+                      { icon: "📤", label: "Share Card", hint: "", fn: () => setShareOpen(true) },
                       { icon: "📊", label: "Dashboard", hint: "S", fn: () => setDashOpen(true) },
                       { icon: "📄", label: "Export / Print", hint: "", fn: exportProgram },
                       { icon: "⚙️", label: "Settings", hint: "", fn: () => setSettingsOpen(true) },
@@ -4750,6 +4852,10 @@ function App() {
       {goalsOpen && <GoalsModal sessions={sessions} rolls={rolls} learned={learned} drillAgg={drillAgg}
         plans={plans} activePlan={activePlan} promotions={promotions} profile={profile} goals={goals}
         onAddGoal={addGoal} onRemoveGoal={removeGoal} onSetTarget={setGoalTarget} onClose={() => setGoalsOpen(false)} />}
+
+      {shareOpen && <ShareModal sessions={sessions} rolls={rolls} learned={learned} drillAgg={drillAgg}
+        plans={plans} activePlan={activePlan} promotions={promotions} comps={comps} profile={profile}
+        onClose={() => setShareOpen(false)} />}
     </div>
   );
 }
