@@ -2314,7 +2314,7 @@ function useLocalStorage(key, initial) {
 const DATA_KEYS = [
   "bjjflow:favs", "bjjflow:flows", "bjjflow:notes", "bjjflow:plans", "bjjflow:activePlan",
   "bjjflow:ruleset", "bjjflow:learned", "bjjflow:settings", "bjjflow:srs", "bjjflow:drillAgg",
-  "bjjflow:videos", "bjjflow:sessions", "bjjflow:profile", "bjjflow:seen", "bjjflow:promotions", "bjjflow:rolls",
+  "bjjflow:videos", "bjjflow:sessions", "bjjflow:profile", "bjjflow:seen", "bjjflow:promotions", "bjjflow:rolls", "bjjflow:goals",
 ];
 // Submission names (for the roll log tags), derived from the position graph.
 const SUB_NAMES = [...new Set(Object.values(POSITIONS).filter(p => p.group === "Submissions").map(p => p.name.replace(/\s*\(.*\)/, "").replace(/\s*\/.*/, "").trim()))];
@@ -2410,6 +2410,63 @@ function buildInsights(ctx) {
   if (thisWeek < goal && sessions.length > 0) { const n = goal - thisWeek; out.push({ icon: "📆", tone: "cyan", title: `${n} more session${n !== 1 ? "s" : ""} to hit your weekly goal`, body: `You're at ${thisWeek}/${goal} this week — log your next class to keep the streak alive.`, cta: { label: "Log a class", action: { type: "journal" } } }); }
   if (out.length === 0) out.push({ icon: "🌱", tone: "slate", title: "Start logging to unlock insights", body: "Once you log a few classes and rolls, SubMap surfaces personalized tips here — what to drill, gaps in your game, and your go-to finishes.", cta: { label: "Open Journal", action: { type: "journal" } } });
   return out;
+}
+
+// Aggregate the user's data into a single context for goals/achievements.
+function statsCtx({ sessions = [], rolls = [], learned = [], drillAgg = { seen: 0, correct: 0 }, plans = [], activePlan = null, promotions = [], profile = {} }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const matHours = Math.round(sessions.reduce((n, e) => n + (e.length || e.minutes || 0), 0) / 60 * 10) / 10;
+  const learnedPct = Math.round(learned.length / Object.keys(POSITIONS).length * 100);
+  const subsHit = rolls.reduce((n, r) => n + (r.hit ? r.hit.length : 0), 0);
+  const subPositions = new Set(rolls.flatMap(r => r.hit || [])).size;
+  const weeks = new Set(sessions.map(e => weekKey(e.date)));
+  let streakWeeks = 0; const d = new Date(today); if (!weeks.has(weekKey(d))) d.setDate(d.getDate() - 7);
+  while (weeks.has(weekKey(d))) { streakWeeks++; d.setDate(d.getDate() - 7); }
+  return { sessions, rolls, learned, drillAgg, plans, activePlan, promotions: promotions.length, profile, matHours, learnedPct, subsHit, subPositions, streakWeeks };
+}
+function computeXP(c) {
+  return Math.round(c.sessions.length * 10 + c.matHours * 5 + c.rolls.length * 4 + c.learned.length * 8 + c.drillAgg.correct * 2 + c.subsHit * 3 + c.promotions * 100);
+}
+const xpForLevel = (lvl) => lvl * 300; // per-level XP step
+function levelInfo(xp) { const level = 1 + Math.floor(xp / 300); const into = xp % 300; return { level, into, need: 300, pct: into / 300 }; }
+
+const ACHIEVEMENTS = [
+  { id: "first", icon: "👣", title: "First Steps", desc: "Log your first session", test: c => c.sessions.length >= 1 },
+  { id: "consistent", icon: "📅", title: "Consistent", desc: "4-week training streak", test: c => c.streakWeeks >= 4 },
+  { id: "relentless", icon: "🔥", title: "Relentless", desc: "12-week training streak", test: c => c.streakWeeks >= 12 },
+  { id: "grinder", icon: "💪", title: "Grinder", desc: "25 sessions logged", test: c => c.sessions.length >= 25 },
+  { id: "veteran", icon: "🥋", title: "Veteran", desc: "100 sessions logged", test: c => c.sessions.length >= 100 },
+  { id: "matrat", icon: "⏱️", title: "Mat Rat", desc: "50 hours on the mat", test: c => c.matHours >= 50 },
+  { id: "centurion", icon: "💯", title: "Centurion", desc: "100 hours on the mat", test: c => c.matHours >= 100 },
+  { id: "cartographer", icon: "🗺️", title: "Cartographer", desc: "Learn 25% of positions", test: c => c.learnedPct >= 25 },
+  { id: "explorer", icon: "🧭", title: "Explorer", desc: "Learn 50% of positions", test: c => c.learnedPct >= 50 },
+  { id: "mastermap", icon: "👑", title: "Master of the Map", desc: "Learn every position", test: c => c.learnedPct >= 100 },
+  { id: "firstblood", icon: "✊", title: "First Blood", desc: "Log your first submission", test: c => c.subsHit >= 1 },
+  { id: "finisher", icon: "🎯", title: "Finisher", desc: "25 submissions hit", test: c => c.subsHit >= 25 },
+  { id: "hunter", icon: "🎣", title: "Hunter", desc: "Hit 6 different submissions", test: c => c.subPositions >= 6 },
+  { id: "student", icon: "🛡️", title: "Student of the Game", desc: "Log 10 rolls", test: c => c.rolls.length >= 10 },
+  { id: "planner", icon: "🧠", title: "Planner", desc: "Create a game plan", test: c => c.plans.length >= 1 },
+  { id: "strategist", icon: "♟️", title: "Strategist", desc: "A game plan with 8+ moves", test: c => c.plans.some(p => Object.keys(p.picks || {}).length >= 8) },
+  { id: "scholar", icon: "📚", title: "Scholar", desc: "Answer 50 quiz questions", test: c => c.drillAgg.seen >= 50 },
+  { id: "sharp", icon: "🎓", title: "Sharp Shooter", desc: "80%+ drill accuracy (20+)", test: c => c.drillAgg.seen >= 20 && c.drillAgg.correct / c.drillAgg.seen >= 0.8 },
+  { id: "decorated", icon: "🏅", title: "Decorated", desc: "Log a promotion", test: c => c.promotions >= 1 },
+];
+
+const GOAL_METRICS = {
+  sessions: { label: "sessions logged", unit: "" },
+  matHours: { label: "mat hours", unit: "h" },
+  learnedPct: { label: "positions learned", unit: "%" },
+  subsHit: { label: "submissions hit", unit: "" },
+  weeklyStreak: { label: "week streak", unit: "w" },
+  subPositions: { label: "different subs hit", unit: "" },
+  drillAnswered: { label: "quiz questions", unit: "" },
+};
+const GOAL_PRESETS = [
+  { metric: "sessions", target: 50 }, { metric: "matHours", target: 100 }, { metric: "learnedPct", target: 50 },
+  { metric: "subsHit", target: 100 }, { metric: "weeklyStreak", target: 8 }, { metric: "subPositions", target: 8 },
+];
+function metricValue(metric, c) {
+  return ({ sessions: c.sessions.length, matHours: c.matHours, learnedPct: c.learnedPct, subsHit: c.subsHit, weeklyStreak: c.streakWeeks, subPositions: c.subPositions, drillAnswered: c.drillAgg.seen })[metric] || 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -3769,6 +3826,103 @@ function JournalModal({ profile, setProfile, entries, onLog, onDelete, promotion
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//  GOALS & ACHIEVEMENTS — gamification (level/XP, goals, badges)
+//////////////////////////////////////////////////////////////////////////////
+
+function GoalsModal({ sessions, rolls, learned, drillAgg, plans, activePlan, promotions, profile, goals, onAddGoal, onRemoveGoal, onSetTarget, onClose }) {
+  const c = statsCtx({ sessions, rolls, learned, drillAgg, plans, activePlan, promotions, profile });
+  const xp = computeXP(c); const lv = levelInfo(xp);
+  const unlocked = ACHIEVEMENTS.filter(a => a.test(c));
+  const activeMetrics = new Set(goals.map(g => g.metric));
+  const [cm, setCm] = React.useState("sessions"); const [ct, setCt] = React.useState(50);
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink-950/85 backdrop-blur-sm">
+      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3">
+        <span className="text-lg">🏆</span><h2 className="font-display font-semibold text-white">Goals &amp; Achievements</h2>
+        <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+          {/* Level / XP */}
+          <div className="rounded-2xl glass ring-1 ring-white/10 p-5 bg-gradient-to-br from-indigo-500/15 to-emerald-500/[0.06]">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center shadow-lg shrink-0">
+                <span className="font-display text-2xl font-bold text-white">{lv.level}</span>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-baseline gap-2"><span className="font-display text-lg font-bold text-white">Level {lv.level}</span><span className="text-xs text-slate-400">{xp.toLocaleString()} XP · {unlocked.length}/{ACHIEVEMENTS.length} badges</span></div>
+                <div className="h-2.5 rounded-full bg-ink-700 overflow-hidden mt-2"><div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all" style={{ width: `${Math.round(lv.pct * 100)}%` }} /></div>
+                <div className="text-[11px] text-slate-500 mt-1">{lv.need - lv.into} XP to level {lv.level + 1}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Goals */}
+          <div>
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Your Goals</h3>
+            {goals.length === 0 && <p className="text-sm text-slate-500 mb-2">No goals yet — add one below to track toward a target.</p>}
+            <div className="space-y-2">
+              {goals.map(g => {
+                const val = metricValue(g.metric, c); const m = GOAL_METRICS[g.metric]; const pct = Math.min(1, val / g.target); const done = val >= g.target;
+                return (
+                  <div key={g.id} className={`rounded-2xl glass ring-1 p-4 ${done ? "ring-emerald-400/40 bg-emerald-500/[0.07]" : "ring-white/5"}`}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-sm text-slate-200">{done ? "🎉 " : ""}{val}{m.unit} / {g.target}{m.unit} {m.label}</span>
+                      {done && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-300 font-bold">COMPLETE</span>}
+                      <span className="ml-auto flex items-center gap-1">
+                        <button onClick={() => onSetTarget(g.id, Math.max(1, g.target - (g.metric === "subsHit" || g.metric === "matHours" ? 10 : g.metric === "learnedPct" ? 5 : 5)))} className="h-5 w-5 rounded bg-ink-700 text-slate-300 text-xs">−</button>
+                        <button onClick={() => onSetTarget(g.id, g.target + (g.metric === "subsHit" || g.metric === "matHours" ? 10 : g.metric === "learnedPct" ? 5 : 5))} className="h-5 w-5 rounded bg-ink-700 text-slate-300 text-xs">+</button>
+                        <button onClick={() => onRemoveGoal(g.id)} className="px-1.5 text-slate-600 hover:text-rose-300 text-sm">✕</button>
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-ink-700 overflow-hidden"><div className="h-full rounded-full transition-all" style={{ width: `${Math.round(pct * 100)}%`, background: done ? "#34d399" : "linear-gradient(90deg,#6366f1,#22d3ee)" }} /></div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* preset chips + custom */}
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {GOAL_PRESETS.filter(p => !activeMetrics.has(p.metric)).map(p => (
+                <button key={p.metric} onClick={() => onAddGoal(p.metric, p.target)} className="text-[11px] px-2.5 py-1.5 rounded-full bg-ink-700 hover:bg-ink-600 text-slate-300 border border-white/5 transition">
+                  + {p.target}{GOAL_METRICS[p.metric].unit} {GOAL_METRICS[p.metric].label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <span className="text-[11px] text-slate-500">Custom:</span>
+              <select value={cm} onChange={e => setCm(e.target.value)} className="bg-ink-850 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-slate-200">
+                {Object.keys(GOAL_METRICS).map(k => <option key={k} value={k}>{GOAL_METRICS[k].label}</option>)}
+              </select>
+              <input type="number" value={ct} onChange={e => setCt(e.target.value)} className="w-20 bg-ink-850 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-slate-200" />
+              <button onClick={() => onAddGoal(cm, Number(ct) || 1)} className="text-sm px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold transition">Add goal</button>
+            </div>
+          </div>
+
+          {/* Achievements */}
+          <div>
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Achievements — {unlocked.length}/{ACHIEVEMENTS.length}</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {ACHIEVEMENTS.map(a => {
+                const got = a.test(c);
+                return (
+                  <div key={a.id} className={`rounded-xl ring-1 p-3 flex items-center gap-3 transition ${got ? "glass ring-amber-400/30 bg-amber-400/[0.06]" : "bg-ink-800/40 ring-white/5 opacity-55"}`}>
+                    <span className="text-2xl leading-none grayscale-0" style={{ filter: got ? "none" : "grayscale(1)" }}>{a.icon}</span>
+                    <div className="min-w-0"><div className={`text-sm font-semibold truncate ${got ? "text-white" : "text-slate-400"}`}>{a.title}</div><div className="text-[11px] text-slate-500 truncate">{a.desc}</div></div>
+                    {got && <span className="ml-auto text-amber-300">✓</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //  INSIGHTS — turn logged data into personalized recommendations
 //////////////////////////////////////////////////////////////////////////////
 
@@ -3832,7 +3986,9 @@ function InsightsModal({ sessions, rolls, learned, srs, drillAgg, activePlan, pr
 //  TODAY — home widget on the Standing position (streak, goal, quick start)
 //////////////////////////////////////////////////////////////////////////////
 
-function TodayWidget({ profile, sessions, activePlan, onStartSession, onFollowPlan, onLogClass }) {
+function TodayWidget({ profile, sessions, rolls = [], learned = [], srs = {}, activePlan, onStartSession, onFollowPlan, onLogClass, onAction }) {
+  const insights = buildInsights({ sessions, rolls, learned, srs, activePlan, profile });
+  const topInsight = insights.find(i => i.tone !== "slate");
   const today = new Date().toISOString().slice(0, 10);
   const goal = profile.weeklyGoal || 3;
   const thisWeek = sessions.filter(e => weekKey(e.date) === weekKey(today)).length;
@@ -3865,6 +4021,14 @@ function TodayWidget({ profile, sessions, activePlan, onStartSession, onFollowPl
           <button onClick={onLogClass} className="text-sm px-3 py-2 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200 border border-white/5 transition">📒 Log a class</button>
         </div>
       </div>
+      {topInsight && onAction && (
+        <button onClick={() => onAction(topInsight.cta.action)}
+          className="mt-3 w-full flex items-center gap-2 text-left rounded-xl bg-ink-800/60 hover:bg-ink-700/70 ring-1 ring-white/5 px-3 py-2 transition">
+          <span className="text-base shrink-0">{topInsight.icon}</span>
+          <span className="text-sm text-slate-200 flex-1 min-w-0 truncate">{topInsight.title}</span>
+          <span className="text-xs text-indigo-300 shrink-0">{topInsight.cta.label} →</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -3907,8 +4071,14 @@ function App() {
   const [rolls, setRolls] = useLocalStorage("bjjflow:rolls", []);
   const [journalOpen, setJournalOpen] = React.useState(false);
   const [insightsOpen, setInsightsOpen] = React.useState(false);
+  const [goalsOpen, setGoalsOpen] = React.useState(false);
+  const [goals, setGoals] = useLocalStorage("bjjflow:goals", []);
   const [trainTab, setTrainTab] = React.useState("position");
   const dismissWelcome = () => { setSeen(true); setWelcomeOpen(false); };
+
+  const addGoal = (metric, target) => setGoals(g => (g.some(x => x.metric === metric) ? g : [...g, { id: Date.now(), metric, target: Number(target) || 1 }]));
+  const removeGoal = (id) => setGoals(g => g.filter(x => x.id !== id));
+  const setGoalTarget = (id, target) => setGoals(g => g.map(x => x.id === id ? { ...x, target } : x));
 
   const addLog = (entry) => setSessions(s => [{ id: Date.now(), ...entry }, ...s].slice(0, 200));
   const deleteSession = (id) => setSessions(s => s.filter(e => e.id !== id));
@@ -4104,10 +4274,10 @@ function App() {
     const onKey = (e) => {
       const tag = (e.target.tagName || "").toLowerCase();
       const typing = tag === "input" || tag === "textarea" || e.target.isContentEditable;
-      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen || insightsOpen;
+      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen || insightsOpen || goalsOpen;
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setCmdkOpen(v => !v); return; }
       if (typing) return;
-      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); setInsightsOpen(false); return; }
+      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); setInsightsOpen(false); setGoalsOpen(false); return; }
       if (anyModal) return;
       if (/^[1-9]$/.test(e.key)) { const t = pos.transitions[+e.key - 1]; if (t) goTo(t.to); return; }
       switch (e.key.toLowerCase()) {
@@ -4120,6 +4290,7 @@ function App() {
         case "w": setAthleteOpen(true); break;
         case "j": setJournalOpen(true); break;
         case "i": setInsightsOpen(true); break;
+        case "g": setGoalsOpen(true); break;
         case "s": setDashOpen(true); break;
         case "?": setWelcomeOpen(true); break;
         case "f": toggleFav(currentId); break;
@@ -4128,7 +4299,7 @@ function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, trainOpen, athleteOpen, welcomeOpen, journalOpen, insightsOpen, history]); // eslint-disable-line
+  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, trainOpen, athleteOpen, welcomeOpen, journalOpen, insightsOpen, goalsOpen, history]); // eslint-disable-line
 
   // Flow polish: when the position changes, scroll the content back to the top
   // so each new position opens at its hero, not wherever you last scrolled.
@@ -4159,6 +4330,7 @@ function App() {
             { icon: "🧠", label: "Plans", fn: () => { setPlansOpen(true); setSidebarOpen(false); } },
             { icon: "📒", label: "Journal", fn: () => { setJournalOpen(true); setSidebarOpen(false); } },
             { icon: "💡", label: "Insights", fn: () => { setInsightsOpen(true); setSidebarOpen(false); } },
+            { icon: "🏆", label: "Goals", fn: () => { setGoalsOpen(true); setSidebarOpen(false); } },
             { icon: "🗺️", label: "Map", fn: () => { setMapOpen(true); setSidebarOpen(false); } },
             { icon: "📊", label: "Stats", fn: () => { setDashOpen(true); setSidebarOpen(false); } },
             { icon: "📄", label: "Export", fn: () => { exportProgram(); setSidebarOpen(false); } },
@@ -4210,6 +4382,7 @@ function App() {
                       { icon: "🗺️", label: "Flow Map", hint: "M", fn: () => setMapOpen(true) },
                       { icon: "📒", label: "Training Journal", hint: "J", fn: () => setJournalOpen(true) },
                       { icon: "💡", label: "Insights", hint: "I", fn: () => setInsightsOpen(true) },
+                      { icon: "🏆", label: "Goals & Badges", hint: "G", fn: () => setGoalsOpen(true) },
                       { icon: "📊", label: "Dashboard", hint: "S", fn: () => setDashOpen(true) },
                       { icon: "📄", label: "Export / Print", hint: "", fn: exportProgram },
                       { icon: "⚙️", label: "Settings", hint: "", fn: () => setSettingsOpen(true) },
@@ -4272,10 +4445,11 @@ function App() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto grid-bg">
           <div key={animKey} className="fade-key max-w-5xl mx-auto px-4 sm:px-6 py-6">
             {currentId === "standing" && (
-              <TodayWidget profile={profile} sessions={sessions} activePlan={activePlan}
+              <TodayWidget profile={profile} sessions={sessions} rolls={rolls} learned={learned} srs={srs} activePlan={activePlan}
                 onStartSession={() => openTrain("session")}
                 onFollowPlan={followPlan}
-                onLogClass={() => setJournalOpen(true)} />
+                onLogClass={() => setJournalOpen(true)}
+                onAction={onInsightAction} />
             )}
             {/* Position hero */}
             <div className="grid lg:grid-cols-2 gap-5 mb-6">
@@ -4420,6 +4594,10 @@ function App() {
       {insightsOpen && <InsightsModal sessions={sessions} rolls={rolls} learned={learned} srs={srs}
         drillAgg={drillAgg} activePlan={activePlan} profile={profile}
         onAction={onInsightAction} onClose={() => setInsightsOpen(false)} />}
+
+      {goalsOpen && <GoalsModal sessions={sessions} rolls={rolls} learned={learned} drillAgg={drillAgg}
+        plans={plans} activePlan={activePlan} promotions={promotions} profile={profile} goals={goals}
+        onAddGoal={addGoal} onRemoveGoal={removeGoal} onSetTarget={setGoalTarget} onClose={() => setGoalsOpen(false)} />}
     </div>
   );
 }
