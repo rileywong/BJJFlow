@@ -1905,61 +1905,55 @@ function scorePath(history) {
 //  Two abstract athletes (blue gi / white gi) arranged per `layout`.
 //////////////////////////////////////////////////////////////////////////////
 
-// Shaded, gi-clad "tube" figures posed per layout. A clear upgrade on stick
-// figures and the offline fallback when no photo/clip is attached.
-const _SKIN = "#caa07a", _OL = "#0a0e16";
-const _GI = { b: ["#3b6fd4", "#274d96", "#16233f"], w: ["#dfe6f2", "#aab4c6", "#7c8aa3"] };
-function _lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
-function _ln(pts, w, col) { let d = "M" + pts[0][0] + " " + pts[0][1]; for (let i = 1; i < pts.length; i++) d += "L" + pts[i][0] + " " + pts[i][1]; return `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`; }
-function _circ(p, r, col) { return `<circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${col}"/>`; }
-function _fig(J, c) {
-  const [gi, giD, belt] = _GI[c]; let s = ""; const limbs = [];
-  J.legs.forEach(([kn, ft]) => { limbs.push([[J.H, kn], 16]); limbs.push([[kn, ft], 13]); });
-  J.arms.forEach(([el, ha]) => { limbs.push([[J.S, el], 12]); limbs.push([[el, ha], 10]); });
-  limbs.push([[J.S, J.H], 20]); limbs.push([[J.S, J.head], 11]);
-  limbs.forEach(([p, w]) => { s += _ln(p, w + 4, _OL); }); s += _circ(J.head, 14, _OL);
-  limbs.forEach(([p, w]) => { s += _ln(p, w, gi); }); s += _ln([J.S, J.H], 9, giD);
-  const bd = [J.H[0] - J.S[0], J.H[1] - J.S[1]], bl = Math.hypot(bd[0], bd[1]) || 1, pp = [-bd[1] / bl, bd[0] / bl];
-  s += _ln([[J.H[0] - pp[0] * 12, J.H[1] - pp[1] * 12], [J.H[0] + pp[0] * 12, J.H[1] + pp[1] * 12]], 7, _OL);
-  s += _ln([[J.H[0] - pp[0] * 12, J.H[1] - pp[1] * 12], [J.H[0] + pp[0] * 12, J.H[1] + pp[1] * 12]], 4, belt);
-  J.arms.forEach(([el, ha]) => { s += _circ(ha, 6, _OL) + _circ(ha, 4.5, _SKIN); });
-  J.legs.forEach(([kn, ft]) => { s += _circ(ft, 6.5, _OL) + _circ(ft, 5, _SKIN); });
-  s += _circ(J.head, 12, _SKIN) + _ln([_lerp(J.S, J.head, 0.1), _lerp(J.S, J.head, 0.4)], 3, giD);
-  return s;
+// Shaded, gi-clad figures with tapered limbs, lapels, belts and contact
+// shadows, posed per layout from a mat-level view. The offline default; a
+// clear step up from stick figures (still illustration — photos slot in above).
+const _SKIN = "#c79a72", _SKIN_D = "#a87b50", _OL = "#070a12";
+const _GI = { b: ["#3f74d8", "#2b5099", "#1a2c52", "#5b8ef0"], w: ["#e6ecf6", "#b7c0d2", "#8794aa", "#ffffff"] };
+const _lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+const _P = p => p[0].toFixed(1) + " " + p[1].toFixed(1);
+const _quad = (a, b, c, d, f) => `<path d="M${_P(a)} L${_P(b)} L${_P(c)} L${_P(d)} Z" fill="${f}"/>`;
+const _ci = (p, r, c) => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${r}" fill="${c}"/>`;
+function _cap(A, B, rA, rB) { const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L; return { a1: [A[0] + nx * rA, A[1] + ny * rA], a2: [A[0] - nx * rA, A[1] - ny * rA], b1: [B[0] + nx * rB, B[1] + ny * rB], b2: [B[0] - nx * rB, B[1] - ny * rB] }; }
+function _limb(A, B, rA, rB, f) { const c = _cap(A, B, rA, rB); return _quad(c.a1, c.b1, c.b2, c.a2, f) + _ci(A, rA, f) + _ci(B, rB, f); }
+function _fig(J, col) {
+  const [gi, giD, giDD, giL] = _GI[col]; let out = "", fillP = "", shade = "";
+  const bones = [];
+  J.legs.forEach(([kn, ft]) => { bones.push([J.H, kn, 8.5, 6.5]); bones.push([kn, ft, 6.5, 4.5]); });
+  J.arms.forEach(([el, ha]) => { bones.push([J.S, el, 6.5, 5]); bones.push([el, ha, 5, 3.8]); });
+  bones.push([J.S, J.H, 15, 12.5]); bones.push([J.S, J.head, 6.5, 6]);
+  bones.forEach(([A, B, rA, rB]) => { out += _limb(A, B, rA + 2.2, rB + 2.2, _OL); }); out += _ci(J.head, 13.6, _OL);
+  bones.forEach(([A, B, rA, rB]) => { fillP += _limb(A, B, rA, rB, gi); });
+  const tc = _cap(J.S, J.H, 15, 12.5);
+  shade += _quad(_lerp(tc.a2, tc.a1, 0), _lerp(tc.b2, tc.b1, 0), _lerp(tc.b2, tc.b1, 0.42), _lerp(tc.a2, tc.a1, 0.42), giDD);
+  shade += _quad(_lerp(tc.a1, tc.a2, 0), _lerp(tc.b1, tc.b2, 0), _lerp(tc.b1, tc.b2, 0.30), _lerp(tc.a1, tc.a2, 0.30), giL);
+  shade += `<path d="M${_P(_lerp(tc.a1, tc.a2, 0.2))} L${_P(_lerp(J.S, J.H, 0.55))} L${_P(_lerp(tc.a1, tc.a2, 0.8))}" fill="none" stroke="${giDD}" stroke-width="2.2" stroke-linejoin="round"/>`;
+  shade += _ci(_lerp(J.S, J.H, 0.55), 1.6, giDD);
+  const bd = [J.H[0] - J.S[0], J.H[1] - J.S[1]], bl = Math.hypot(bd[0], bd[1]) || 1, pp = [-bd[1] / bl, bd[0] / bl], beltc = _lerp(J.S, J.H, 0.82);
+  const b0 = [beltc[0] - pp[0] * 14, beltc[1] - pp[1] * 14], b1 = [beltc[0] + pp[0] * 14, beltc[1] + pp[1] * 14];
+  const beltStr = _limb(b0, b1, 4.6, 4.6, _OL) + _limb(b0, b1, 3, 3, col === "b" ? "#10203f" : "#5b6680");
+  let skin = "";
+  J.arms.forEach(([el, ha]) => { skin += _ci(ha, 5.4, _OL) + _ci(ha, 4, _SKIN); });
+  J.legs.forEach(([kn, ft]) => { const dx = ft[0] - kn[0], dy = ft[1] - kn[1], L = Math.hypot(dx, dy) || 1, fx = [ft[0] + dx / L * 3, ft[1] + dy / L * 3]; skin += _limb(ft, fx, 5, 3.5, _OL) + _ci(ft, 5, _SKIN); });
+  skin += _ci(J.head, 12.2, _OL) + _ci(J.head, 11, _SKIN);
+  skin += `<path d="M${_P([J.head[0] - 11, J.head[1] - 2])} A11 11 0 0 1 ${_P([J.head[0] + 2, J.head[1] - 10.8])}" fill="none" stroke="${_SKIN_D}" stroke-width="2.5"/>`;
+  return out + fillP + shade + beltStr + skin;
 }
 const _POSES = {
-  standing: () =>
-    _fig({ head: [78, 40], S: [78, 62], H: [78, 100], arms: [[[96, 66], [112, 60]], [[64, 72], [58, 86]]], legs: [[[72, 118], [68, 134]], [[84, 118], [88, 134]]] }, "b")
-    + _fig({ head: [122, 40], S: [122, 62], H: [122, 100], arms: [[[104, 66], [88, 60]], [[136, 72], [142, 86]]], legs: [[[116, 118], [112, 134]], [[128, 118], [132, 134]]] }, "w"),
-  guard: () =>
-    _fig({ head: [48, 98], S: [72, 98], H: [112, 100], arms: [[[90, 86], [108, 82]], [[88, 108], [106, 110]]], legs: [[[130, 78], [142, 92]], [[128, 92], [142, 100]]] }, "b")
-    + _fig({ head: [152, 56], S: [142, 80], H: [152, 104], arms: [[[124, 90], [112, 100]], [[150, 92], [150, 103]]], legs: [[[158, 116], [170, 120]], [[150, 116], [162, 122]]] }, "w"),
-  half: () =>
-    _fig({ head: [50, 98], S: [72, 99], H: [110, 98], arms: [[[88, 88], [100, 82]], [[86, 108], [100, 110]]], legs: [[[120, 82], [112, 72]], [[124, 98], [140, 100]]] }, "b")
-    + _fig({ head: [150, 62], S: [142, 84], H: [150, 104], arms: [[[122, 92], [108, 98]], [[150, 94], [150, 104]]], legs: [[[140, 108], [126, 112]], [[156, 112], [168, 116]]] }, "w"),
-  side: () =>
-    _fig({ head: [44, 100], S: [68, 100], H: [116, 100], arms: [[[84, 88], [98, 80]], [[86, 114], [100, 120]]], legs: [[[136, 92], [152, 86]], [[136, 110], [152, 116]]] }, "b")
-    + _fig({ head: [98, 62], S: [96, 84], H: [98, 98], arms: [[[74, 84], [58, 90]], [[112, 96], [124, 102]]], legs: [[[112, 110], [130, 118]], [[98, 112], [104, 128]]] }, "w"),
-  mount: () =>
-    _fig({ head: [40, 100], S: [64, 100], H: [112, 100], arms: [[[60, 86], [54, 76]], [[66, 116], [58, 124]]], legs: [[[136, 96], [158, 94]], [[134, 108], [158, 110]]] }, "b")
-    + _fig({ head: [112, 44], S: [112, 68], H: [112, 98], arms: [[[92, 78], [80, 86]], [[132, 78], [144, 86]]], legs: [[[98, 110], [88, 118]], [[126, 110], [136, 118]]] }, "w"),
-  back: () =>
-    _fig({ head: [92, 64], S: [92, 86], H: [92, 110], arms: [[[74, 96], [62, 108]], [[110, 96], [122, 108]]], legs: [[[80, 124], [68, 132]], [[104, 124], [116, 132]]] }, "w")
-    + _fig({ head: [110, 52], S: [108, 78], H: [110, 104], arms: [[[88, 86], [70, 92]], [[126, 88], [120, 104]]], legs: [[[86, 112], [72, 120]], [[132, 112], [140, 124]]] }, "b"),
-  turtle: () =>
-    _fig({ head: [58, 98], S: [78, 92], H: [112, 92], arms: [[[72, 104], [66, 116]], [[84, 104], [80, 116]]], legs: [[[114, 104], [122, 116]], [[104, 104], [112, 116]]] }, "b")
-    + _fig({ head: [124, 58], S: [112, 80], H: [94, 88], arms: [[[92, 86], [76, 92]], [[118, 88], [108, 100]]], legs: [[[120, 98], [134, 104]], [[110, 100], [122, 112]]] }, "w"),
-  leg: () =>
-    _fig({ head: [40, 84], S: [62, 92], H: [98, 100], arms: [[[50, 104], [42, 114]], [[56, 80], [46, 74]]], legs: [[[120, 96], [150, 90]], [[118, 106], [150, 102]]] }, "b")
-    + _fig({ head: [160, 84], S: [138, 92], H: [102, 100], arms: [[[150, 104], [158, 114]], [[144, 80], [154, 74]]], legs: [[[80, 96], [50, 94]], [[82, 106], [52, 106]]] }, "w"),
-  sub: () =>
-    _fig({ head: [58, 96], S: [80, 98], H: [116, 100], arms: [[[98, 90], [118, 82]], [[86, 108], [102, 112]]], legs: [[[122, 80], [112, 66]], [[120, 92], [108, 82]]] }, "b")
-    + _fig({ head: [152, 72], S: [142, 90], H: [152, 108], arms: [[[120, 88], [104, 86]], [[150, 98], [160, 104]]], legs: [[[158, 118], [170, 122]], [[148, 118], [158, 124]]] }, "w"),
+  standing: () => _fig({ head: [78, 40], S: [78, 62], H: [78, 100], arms: [[[97, 66], [114, 60]], [[63, 72], [57, 86]]], legs: [[[72, 118], [68, 136]], [[85, 118], [89, 136]]] }, "b") + _fig({ head: [122, 40], S: [122, 62], H: [122, 100], arms: [[[103, 66], [86, 60]], [[137, 72], [143, 86]]], legs: [[[115, 118], [111, 136]], [[128, 118], [132, 136]]] }, "w"),
+  mount: () => _fig({ head: [38, 100], S: [62, 100], H: [112, 100], arms: [[[58, 84], [50, 74]], [[64, 116], [56, 124]]], legs: [[[138, 95], [160, 93]], [[136, 108], [160, 110]]] }, "b") + _fig({ head: [112, 42], S: [112, 68], H: [112, 98], arms: [[[91, 77], [78, 86]], [[133, 77], [146, 86]]], legs: [[[97, 110], [86, 120]], [[127, 110], [138, 120]]] }, "w"),
+  side: () => _fig({ head: [42, 100], S: [68, 100], H: [118, 100], arms: [[[84, 87], [98, 78]], [[86, 114], [100, 121]]], legs: [[[138, 91], [156, 84]], [[138, 110], [156, 117]]] }, "b") + _fig({ head: [100, 60], S: [98, 82], H: [100, 100], arms: [[[74, 82], [56, 88]], [[114, 95], [128, 101]]], legs: [[[114, 112], [132, 120]], [[98, 114], [104, 130]]] }, "w"),
+  back: () => _fig({ head: [90, 66], S: [90, 88], H: [90, 112], arms: [[[72, 98], [60, 110]], [[108, 98], [120, 110]]], legs: [[[78, 126], [66, 134]], [[102, 126], [114, 134]]] }, "w") + _fig({ head: [112, 52], S: [110, 78], H: [112, 106], arms: [[[88, 86], [68, 92]], [[128, 88], [120, 106]]], legs: [[[86, 114], [70, 122]], [[134, 114], [144, 126]]] }, "b"),
+  guard: () => _fig({ head: [46, 100], S: [72, 100], H: [114, 102], arms: [[[90, 87], [110, 82]], [[88, 110], [108, 112]]], legs: [[[132, 78], [144, 92]], [[130, 92], [146, 100]]] }, "b") + _fig({ head: [154, 54], S: [144, 80], H: [154, 106], arms: [[[124, 90], [110, 100]], [[152, 92], [152, 104]]], legs: [[[160, 118], [172, 122]], [[152, 118], [164, 124]]] }, "w"),
+  turtle: () => _fig({ head: [56, 100], S: [80, 94], H: [114, 94], arms: [[[72, 106], [66, 118]], [[86, 106], [82, 118]]], legs: [[[116, 106], [124, 118]], [[104, 106], [112, 118]]] }, "b") + _fig({ head: [126, 58], S: [112, 80], H: [92, 88], arms: [[[92, 88], [74, 94]], [[120, 90], [110, 102]]], legs: [[[122, 98], [136, 104]], [[110, 100], [122, 112]]] }, "w"),
+  half: () => _fig({ head: [48, 100], S: [72, 100], H: [112, 100], arms: [[[88, 88], [100, 82]], [[86, 108], [100, 110]]], legs: [[[120, 84], [112, 74]], [[124, 98], [140, 100]]] }, "b") + _fig({ head: [150, 60], S: [142, 82], H: [150, 104], arms: [[[122, 90], [108, 98]], [[150, 92], [150, 104]]], legs: [[[140, 108], [126, 112]], [[156, 112], [168, 116]]] }, "w"),
+  leg: () => _fig({ head: [40, 86], S: [62, 92], H: [98, 100], arms: [[[50, 104], [42, 114]], [[56, 80], [46, 74]]], legs: [[[120, 96], [150, 90]], [[118, 106], [150, 102]]] }, "b") + _fig({ head: [160, 86], S: [138, 92], H: [102, 100], arms: [[[150, 104], [158, 114]], [[144, 80], [154, 74]]], legs: [[[80, 96], [50, 94]], [[82, 106], [52, 106]]] }, "w"),
+  sub: () => _fig({ head: [58, 98], S: [80, 100], H: [116, 100], arms: [[[98, 90], [118, 82]], [[86, 108], [102, 112]]], legs: [[[122, 82], [112, 68]], [[120, 94], [108, 84]]] }, "b") + _fig({ head: [152, 72], S: [142, 90], H: [152, 108], arms: [[[120, 88], [104, 86]], [[150, 98], [160, 104]]], legs: [[[158, 118], [170, 122]], [[148, 118], [158, 124]]] }, "w"),
 };
 const _LAYOUT_POSE = { standing: "standing", "guard-bottom": "guard", "guard-top": "guard", "half-bottom": "half", side: "side", mount: "mount", back: "back", turtle: "turtle", legentangle: "leg", submission: "sub" };
 function matSceneSVG(layout) {
   const pose = (_POSES[_LAYOUT_POSE[layout]] || _POSES.standing)();
-  return `<svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="200" height="150" fill="#0e1424"/><rect x="0" y="104" width="200" height="46" fill="#141d33"/><ellipse cx="100" cy="122" rx="82" ry="13" fill="#0a0e1a" opacity="0.5"/>${pose}</svg>`;
+  return `<svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><rect width="200" height="150" fill="#10182b"/><rect x="0" y="100" width="200" height="50" fill="#16203a"/><ellipse cx="100" cy="120" rx="84" ry="14" fill="#070b14" opacity="0.55"/>${pose}</svg>`;
 }
 function MatScene({ layout }) {
   return <div className="w-full h-full [&>svg]:w-full [&>svg]:h-full [&>svg]:block" dangerouslySetInnerHTML={{ __html: matSceneSVG(layout) }} />;
