@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BJJFlow — Interactive BJJ Position Flow Tree</title>
+  <title>SubMap — Interactive BJJ Position & Submission Map</title>
 
   <!--
   ============================================================================
-   BJJFlow  ·  An Endless Brazilian Jiu-Jitsu Position Flow Tree
+   SubMap  ·  An Endless Brazilian Jiu-Jitsu Position & Submission Map
   ============================================================================
    A single, self-contained HTML file. No build step. Open it in any browser.
 
@@ -2321,11 +2321,11 @@ const SUB_NAMES = [...new Set(Object.values(POSITIONS).filter(p => p.group === "
 function exportData() {
   const data = {};
   DATA_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v != null) data[k] = v; });
-  const payload = { app: "BJJFlow", version: 1, exported: new Date().toISOString(), data };
+  const payload = { app: "SubMap", version: 1, exported: new Date().toISOString(), data };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `bjjflow-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `submap-backup-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
 }
 function importData(file, done) {
@@ -2364,6 +2364,52 @@ function weekKey(d) {
   const yearStart = new Date(dt.getFullYear(), 0, 1);
   const wk = Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
   return `${dt.getFullYear()}-W${String(wk).padStart(2, "0")}`;
+}
+
+// Map a submission you keep getting caught by -> a position to study its defense.
+const SUB_DEFENSE = {
+  "Rear Naked Choke": "back-defender", "Heel Hook": "ashi", "Kneebar": "saddle",
+  "Straight Ankle Lock": "ashi", "Toe Hold": "fifty-fifty", "Armbar": "mount-bottom",
+  "Triangle Choke": "closed-guard-top", "Kimura": "side-bottom", "Guillotine Choke": "front-headlock",
+  "Omoplata": "closed-guard-top", "Collar Choke": "mount-bottom", "D'Arce": "turtle-bottom",
+  "Twister": "turtle-bottom", "Arm Triangle": "side-bottom",
+};
+function defenseFor(name) {
+  if (SUB_DEFENSE[name]) return SUB_DEFENSE[name];
+  for (const k in SUB_DEFENSE) { if (name.indexOf(k.split(" ")[0]) >= 0) return SUB_DEFENSE[k]; }
+  return null;
+}
+
+// Turn the user's logged data into a few actionable, personalized insights.
+function buildInsights(ctx) {
+  const { sessions = [], rolls = [], learned = [], srs = {}, activePlan = null, profile = {} } = ctx;
+  const today = new Date().toISOString().slice(0, 10);
+  const out = [];
+  const tally = (arr, key) => { const m = {}; arr.forEach(r => (r[key] || []).forEach(s => { m[s] = (m[s] || 0) + 1; })); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
+  const taken = tally(rolls, "taken"), hit = tally(rolls, "hit");
+  if (taken[0] && taken[0][1] >= 2) {
+    const def = defenseFor(taken[0][0]);
+    out.push({ icon: "🛡️", tone: "rose", title: `Plug the leak: the ${taken[0][0]}`, body: `You've been caught ${taken[0][1]}× by this in your roll log — drill the escape before it becomes a habit.`,
+      cta: def ? { label: `Study ${POSITIONS[def].name}`, action: { type: "jump", id: def } } : { label: "Open Drill", action: { type: "drill" } } });
+  }
+  if (hit[0] && hit[0][1] >= 3) out.push({ icon: "⭐", tone: "emerald", title: `Your bread-and-butter: the ${hit[0][0]}`, body: `${hit[0][1]} finishes logged. Build a game plan that funnels opponents into it.`, cta: { label: "Open Game Plans", action: { type: "plans" } } });
+  if (activePlan) {
+    const picks = Object.keys(activePlan.picks);
+    const miss = ["side-bottom", "mount-bottom", "back-defender"].filter(id => !picks.includes(id));
+    if (miss.length) out.push({ icon: "🧩", tone: "amber", title: `"${activePlan.name}" has escape gaps`, body: `No go-to set from ${miss.map(id => POSITIONS[id].name).slice(0, 2).join(" or ")} — opponents will find the holes.`, cta: { label: `Set one from ${POSITIONS[miss[0]].name}`, action: { type: "jump", id: miss[0] } } });
+  }
+  const weak = Object.entries(srs).filter(([, v]) => v.box < 2 && v.seen >= 2);
+  if (weak.length >= 3) out.push({ icon: "🎯", tone: "indigo", title: `${weak.length} techniques are shaky`, body: `Spaced repetition flagged these for review — a few quiz rounds will lock them in.`, cta: { label: "Open Drill", action: { type: "drill" } } });
+  const ls = new Set(learned); let lowest = null;
+  ["Guard", "Half Guard", "Side Control", "Mount", "Back Control", "Turtle", "Leg Entanglements"].forEach(g => {
+    const items = Object.values(POSITIONS).filter(p => p.group === g); const pc = items.filter(p => ls.has(p.id)).length / items.length;
+    if (lowest === null || pc < lowest.pc) lowest = { g, pc };
+  });
+  if (lowest && lowest.pc < 0.34 && learned.length >= 3) out.push({ icon: "📚", tone: "sky", title: `Your ${lowest.g} is underbuilt`, body: `Only ${Math.round(lowest.pc * 100)}% of ${lowest.g} positions marked learned — spend a week there.`, cta: { label: `Explore ${lowest.g}`, action: { type: "jumpGroup", group: lowest.g } } });
+  const thisWeek = sessions.filter(e => weekKey(e.date) === weekKey(today)).length, goal = profile.weeklyGoal || 3;
+  if (thisWeek < goal && sessions.length > 0) { const n = goal - thisWeek; out.push({ icon: "📆", tone: "cyan", title: `${n} more session${n !== 1 ? "s" : ""} to hit your weekly goal`, body: `You're at ${thisWeek}/${goal} this week — log your next class to keep the streak alive.`, cta: { label: "Log a class", action: { type: "journal" } } }); }
+  if (out.length === 0) out.push({ icon: "🌱", tone: "slate", title: "Start logging to unlock insights", body: "Once you log a few classes and rolls, SubMap surfaces personalized tips here — what to drill, gaps in your game, and your go-to finishes.", cta: { label: "Open Journal", action: { type: "journal" } } });
+  return out;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2881,7 +2927,7 @@ function SettingsModal({ settings, onChange, onClose }) {
               className="text-xs px-2 py-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 transition">⬇ Export</button>
             <button onClick={() => fileRef.current && fileRef.current.click()}
               className="text-xs px-2 py-2 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200 border border-white/5 transition">⬆ Import</button>
-            <button onClick={() => { if (window.confirm("Erase all BJJFlow data on this device? This can't be undone.")) { resetData(); location.reload(); } }}
+            <button onClick={() => { if (window.confirm("Erase all SubMap data on this device? This can't be undone.")) { resetData(); location.reload(); } }}
               className="text-xs px-2 py-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-400/30 transition">✕ Reset</button>
           </div>
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden"
@@ -3040,7 +3086,7 @@ function TrainingModal({ currentId, activePlan, defaultStyle, defaultTab, onJump
     : ps.keyPositions;
   const session = React.useMemo(() => buildSession(focusIds.length ? focusIds : [currentId], length, seed, includeMobility), [source, length, seed, style, currentId, includeMobility]); // eslint-disable-line
   const copySession = () => {
-    const text = `BJJFlow — ${length}-min session (${source === "plan" ? (activePlan ? activePlan.name : "plan") : source === "style" ? style : pos.name})\n\n` +
+    const text = `SubMap — ${length}-min session (${source === "plan" ? (activePlan ? activePlan.name : "plan") : source === "style" ? style : pos.name})\n\n` +
       session.map(b => `${b.name} (${b.mins} min)\n` + b.items.map(it => `  • ${it.name} — ${it.reps}`).join("\n")).join("\n\n");
     if (navigator.clipboard) navigator.clipboard.writeText(text);
     setCopied(true); setTimeout(() => setCopied(false), 1600);
@@ -3360,9 +3406,9 @@ function WelcomeModal({ onClose }) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-ink-950/80 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-lg glass rounded-2xl ring-1 ring-white/10 p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 mb-1">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center font-display font-bold text-white shadow-lg">B</div>
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center font-display font-bold text-white shadow-lg">S</div>
           <div>
-            <h2 className="font-display text-xl font-bold text-white">Welcome to BJJFlow</h2>
+            <h2 className="font-display text-xl font-bold text-white">Welcome to SubMap</h2>
             <p className="text-xs text-slate-400">An interactive BJJ position tree, training & competition-prep tool.</p>
           </div>
         </div>
@@ -3723,6 +3769,66 @@ function JournalModal({ profile, setProfile, entries, onLog, onDelete, promotion
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//  INSIGHTS — turn logged data into personalized recommendations
+//////////////////////////////////////////////////////////////////////////////
+
+function InsightsModal({ sessions, rolls, learned, srs, drillAgg, activePlan, profile, onAction, onClose }) {
+  const insights = buildInsights({ sessions, rolls, learned, srs, activePlan, profile });
+  const today = new Date().toISOString().slice(0, 10);
+  const wkSessions = sessions.filter(e => weekKey(e.date) === weekKey(today));
+  const wkHours = Math.round(wkSessions.reduce((n, e) => n + (e.length || e.minutes || 0), 0) / 60 * 10) / 10;
+  const weeks = new Set(sessions.map(e => weekKey(e.date)));
+  let streak = 0; const d = new Date(today); if (!weeks.has(weekKey(d))) d.setDate(d.getDate() - 7);
+  while (weeks.has(weekKey(d))) { streak++; d.setDate(d.getDate() - 7); }
+  const topHit = (() => { const m = {}; rolls.forEach(r => (r.hit || []).forEach(s => { m[s] = (m[s] || 0) + 1; })); const e = Object.entries(m).sort((a, b) => b[1] - a[1])[0]; return e ? e[0] : "—"; })();
+  const TONE = { rose: "from-rose-500/10 ring-rose-400/30", emerald: "from-emerald-500/10 ring-emerald-400/30", amber: "from-amber-500/10 ring-amber-400/30", indigo: "from-indigo-500/10 ring-indigo-400/30", sky: "from-sky-500/10 ring-sky-400/30", cyan: "from-cyan-500/10 ring-cyan-400/30", slate: "from-white/5 ring-white/10" };
+  const recap = `📋 SubMap weekly recap\n${wkSessions.length} sessions · ${wkHours}h on the mat · 🔥 ${streak}-week streak\nGo-to finish: ${topHit}`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink-950/85 backdrop-blur-sm">
+      <div className="shrink-0 glass border-b border-white/10 px-5 py-3 flex items-center gap-3">
+        <span className="text-lg">💡</span><h2 className="font-display font-semibold text-white">Insights</h2>
+        <button onClick={onClose} className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200">Close ✕</button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+          {/* Weekly recap */}
+          <div className="rounded-2xl glass ring-1 ring-white/5 p-5 bg-gradient-to-br from-indigo-500/10 to-transparent">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">This Week</h3>
+              <button onClick={() => navigator.clipboard && navigator.clipboard.writeText(recap)} className="ml-auto text-[11px] px-2 py-1 rounded-md bg-ink-700 hover:bg-ink-600 text-slate-300 border border-white/5">Copy recap</button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[[wkSessions.length, "sessions"], [wkHours + "h", "mat time"], ["🔥 " + streak, "week streak"], [topHit, "go-to finish"]].map(([v, l], i) => (
+                <div key={i}><div className="text-2xl font-display font-bold text-white truncate">{v}</div><div className="text-xs text-slate-400">{l}</div></div>
+              ))}
+            </div>
+          </div>
+          {/* Insight cards */}
+          <div className="space-y-3">
+            {insights.map((ins, i) => (
+              <div key={i} className={`rounded-2xl glass ring-1 p-4 bg-gradient-to-br to-transparent ${TONE[ins.tone] || TONE.slate}`}>
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl leading-none mt-0.5">{ins.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-white">{ins.title}</div>
+                    <div className="text-sm text-slate-300 mt-0.5 leading-relaxed">{ins.body}</div>
+                  </div>
+                  {ins.cta && (
+                    <button onClick={() => onAction(ins.cta.action)} className="shrink-0 text-xs px-3 py-2 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-100 border border-white/10 transition">{ins.cta.label} →</button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-slate-600 text-center">Insights update as you log sessions, rolls, learned positions, and drill answers.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //  TODAY — home widget on the Standing position (streak, goal, quick start)
 //////////////////////////////////////////////////////////////////////////////
 
@@ -3800,6 +3906,7 @@ function App() {
   const [promotions, setPromotions] = useLocalStorage("bjjflow:promotions", []);
   const [rolls, setRolls] = useLocalStorage("bjjflow:rolls", []);
   const [journalOpen, setJournalOpen] = React.useState(false);
+  const [insightsOpen, setInsightsOpen] = React.useState(false);
   const [trainTab, setTrainTab] = React.useState("position");
   const dismissWelcome = () => { setSeen(true); setWelcomeOpen(false); };
 
@@ -3810,6 +3917,18 @@ function App() {
   const addRoll = (entry) => setRolls(r => [{ id: Date.now(), ...entry }, ...r].slice(0, 300));
   const deleteRoll = (id) => setRolls(r => r.filter(e => e.id !== id));
   const openTrain = (tab) => { setTrainTab(tab || "position"); setTrainOpen(true); };
+  const onInsightAction = (a) => {
+    setInsightsOpen(false);
+    switch (a.type) {
+      case "jump": goTo(a.id, { viaArchive: true }); break;
+      case "jumpGroup": { const p = Object.values(POSITIONS).find(x => x.group === a.group); if (p) goTo(p.id, { viaArchive: true }); break; }
+      case "drill": setDrillOpen(true); break;
+      case "plans": setPlansOpen(true); break;
+      case "journal": setJournalOpen(true); break;
+      case "train": openTrain("position"); break;
+      default: break;
+    }
+  };
 
   const logSession = (entry) => {
     setSessions(s => [{ id: Date.now(), date: new Date().toISOString().slice(0, 10), ...entry }, ...s].slice(0, 60));
@@ -3904,7 +4023,7 @@ function App() {
       : `<p class="muted">No active game plan — open Plans to build one.</p>`;
     const weekSection = `<table><tbody>${WEEKLY.map(d => `<tr><td class="day">${d.d} <span class="tag">${d.tag}</span></td><td>${d.items.map(esc).join(" · ")}</td></tr>`).join("")}</tbody></table><p class="muted">${esc(WEEKLY_NOTE)}</p>`;
     const sessionSection = session.map(b => `<div class="block"><h4>${esc(b.name)} <span class="muted">— ${b.mins} min</span></h4><ul>${b.items.map(it => `<li>${esc(it.name)}${it.reps ? ` <em>(${esc(it.reps)})</em>` : ""}</li>`).join("")}</ul></div>`).join("");
-    const doc = `<!doctype html><html><head><meta charset="utf-8"><title>BJJFlow — My Program</title><style>
+    const doc = `<!doctype html><html><head><meta charset="utf-8"><title>SubMap — My Program</title><style>
       *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Inter,sans-serif;max-width:820px;margin:24px auto;padding:0 20px;color:#111;line-height:1.5}
       h1{margin:0 0 2px;font-size:26px} h2{margin:26px 0 8px;border-bottom:2px solid #6366f1;padding-bottom:4px;font-size:18px} h4{margin:10px 0 4px}
       .sub{color:#666;margin:0 0 8px} table{width:100%;border-collapse:collapse;margin:6px 0} th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:14px;vertical-align:top}
@@ -3913,16 +4032,16 @@ function App() {
       @media print{.toolbar{display:none}}
     </style></head><body>
       <div class="toolbar"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
-      <h1>BJJFlow — My Program</h1>
+      <h1>SubMap — My Program</h1>
       <p class="sub">${plan ? esc(plan.name) + " · " + esc(plan.style) + " style" : "General program"} · generated ${new Date().toLocaleDateString()}</p>
       <h2>Game Plan — my A-game</h2>${planSection}
       <h2>Weekly Training Split</h2>${weekSection}
       <h2>Sample ~60-min Session</h2>${sessionSection}
-      <p class="muted" style="margin-top:24px">Generated by BJJFlow. Training content is general guidance — scale to your level and tap early.</p>
+      <p class="muted" style="margin-top:24px">Generated by SubMap. Training content is general guidance — scale to your level and tap early.</p>
     </body></html>`;
     const w = window.open("", "_blank");
     if (w) { w.document.write(doc); w.document.close(); }
-    else { const blob = new Blob([doc], { type: "text/html" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "bjjflow-program.html"; a.click(); }
+    else { const blob = new Blob([doc], { type: "text/html" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "submap-program.html"; a.click(); }
   };
 
   const toggleFav = (id) =>
@@ -3985,10 +4104,10 @@ function App() {
     const onKey = (e) => {
       const tag = (e.target.tagName || "").toLowerCase();
       const typing = tag === "input" || tag === "textarea" || e.target.isContentEditable;
-      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen;
+      const anyModal = mapOpen || plansOpen || drillOpen || settingsOpen || dashOpen || cmdkOpen || trainOpen || athleteOpen || welcomeOpen || journalOpen || insightsOpen;
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setCmdkOpen(v => !v); return; }
       if (typing) return;
-      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); return; }
+      if (e.key === "Escape") { setCmdkOpen(false); setSettingsOpen(false); setDashOpen(false); setMapOpen(false); setPlansOpen(false); setDrillOpen(false); setTrainOpen(false); setAthleteOpen(false); setToolsOpen(false); setWelcomeOpen(false); setJournalOpen(false); setInsightsOpen(false); return; }
       if (anyModal) return;
       if (/^[1-9]$/.test(e.key)) { const t = pos.transitions[+e.key - 1]; if (t) goTo(t.to); return; }
       switch (e.key.toLowerCase()) {
@@ -4000,6 +4119,7 @@ function App() {
         case "t": openTrain("position"); break;
         case "w": setAthleteOpen(true); break;
         case "j": setJournalOpen(true); break;
+        case "i": setInsightsOpen(true); break;
         case "s": setDashOpen(true); break;
         case "?": setWelcomeOpen(true); break;
         case "f": toggleFav(currentId); break;
@@ -4008,7 +4128,7 @@ function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, trainOpen, athleteOpen, welcomeOpen, journalOpen, history]); // eslint-disable-line
+  }, [pos, currentId, mapOpen, plansOpen, drillOpen, settingsOpen, dashOpen, cmdkOpen, trainOpen, athleteOpen, welcomeOpen, journalOpen, insightsOpen, history]); // eslint-disable-line
 
   // Flow polish: when the position changes, scroll the content back to the top
   // so each new position opens at its hero, not wherever you last scrolled.
@@ -4038,6 +4158,7 @@ function App() {
             { icon: "🎯", label: "Drill", fn: () => { setDrillOpen(true); setSidebarOpen(false); } },
             { icon: "🧠", label: "Plans", fn: () => { setPlansOpen(true); setSidebarOpen(false); } },
             { icon: "📒", label: "Journal", fn: () => { setJournalOpen(true); setSidebarOpen(false); } },
+            { icon: "💡", label: "Insights", fn: () => { setInsightsOpen(true); setSidebarOpen(false); } },
             { icon: "🗺️", label: "Map", fn: () => { setMapOpen(true); setSidebarOpen(false); } },
             { icon: "📊", label: "Stats", fn: () => { setDashOpen(true); setSidebarOpen(false); } },
             { icon: "📄", label: "Export", fn: () => { exportProgram(); setSidebarOpen(false); } },
@@ -4055,10 +4176,10 @@ function App() {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
           <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center font-display font-bold text-white shadow-lg">B</div>
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center font-display font-bold text-white shadow-lg">S</div>
             <div className="leading-tight">
-              <div className="font-display font-bold text-white tracking-tight">BJJFlow</div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest">Position Flow Tree</div>
+              <div className="font-display font-bold text-white tracking-tight">SubMap</div>
+              <div className="text-[10px] text-slate-500 uppercase tracking-widest">BJJ Position Map</div>
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -4088,6 +4209,7 @@ function App() {
                       { icon: "🧠", label: "Game Plans", hint: "P", fn: () => setPlansOpen(true) },
                       { icon: "🗺️", label: "Flow Map", hint: "M", fn: () => setMapOpen(true) },
                       { icon: "📒", label: "Training Journal", hint: "J", fn: () => setJournalOpen(true) },
+                      { icon: "💡", label: "Insights", hint: "I", fn: () => setInsightsOpen(true) },
                       { icon: "📊", label: "Dashboard", hint: "S", fn: () => setDashOpen(true) },
                       { icon: "📄", label: "Export / Print", hint: "", fn: exportProgram },
                       { icon: "⚙️", label: "Settings", hint: "", fn: () => setSettingsOpen(true) },
@@ -4294,6 +4416,10 @@ function App() {
         promotions={promotions} onAddPromotion={addPromotion} onDeletePromotion={deletePromotion}
         rolls={rolls} onAddRoll={addRoll} onDeleteRoll={deleteRoll}
         onClose={() => setJournalOpen(false)} />}
+
+      {insightsOpen && <InsightsModal sessions={sessions} rolls={rolls} learned={learned} srs={srs}
+        drillAgg={drillAgg} activePlan={activePlan} profile={profile}
+        onAction={onInsightAction} onClose={() => setInsightsOpen(false)} />}
     </div>
   );
 }
