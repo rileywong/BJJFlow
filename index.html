@@ -2394,6 +2394,16 @@ function weekKey(d) {
   return `${dt.getFullYear()}-W${String(wk).padStart(2, "0")}`;
 }
 
+// Top/bottom counterparts — "see it from the other side".
+const COUNTERPART = {
+  "closed-guard-top": "closed-guard-bottom", "closed-guard-bottom": "closed-guard-top",
+  "half-top": "half-bottom", "half-bottom": "half-top",
+  "side-top": "side-bottom", "side-bottom": "side-top",
+  "mount-top": "mount-bottom", "mount-bottom": "mount-top",
+  "back-attacker": "back-defender", "back-defender": "back-attacker",
+  "turtle-top": "turtle-bottom", "turtle-bottom": "turtle-top",
+};
+
 // Map a submission you keep getting caught by -> a position to study its defense.
 const SUB_DEFENSE = {
   "Rear Naked Choke": "back-defender", "Heel Hook": "ashi", "Kneebar": "saddle",
@@ -4572,8 +4582,9 @@ function App() {
   const addRoll = (entry) => setRolls(r => [{ id: Date.now(), ...entry }, ...r].slice(0, 300));
   const deleteRoll = (id) => setRolls(r => r.filter(e => e.id !== id));
   const openTrain = (tab) => { setTrainTab(tab || "position"); setTrainOpen(true); };
-  const openDrill = (id) => { setDrillFocus(id || null); openDrill(); };
-  const openStudy = (sc) => { setStudyScope(sc || "learn"); openStudy(); };
+  const openDrill = (id) => { setDrillFocus(id || null); setDrillOpen(true); };
+  const openStudy = (sc) => { setStudyScope(sc || "learn"); setStudyOpen(true); };
+  const surprise = () => { const ids = Object.keys(POSITIONS); goTo(ids[Math.floor(Math.random() * ids.length)], { viaArchive: true }); };
   const markMissionDone = (date) => setMission({ date, done: true });
   const onInsightAction = (a) => {
     setInsightsOpen(false);
@@ -5036,6 +5047,9 @@ function App() {
             <div className="mb-4 flex flex-wrap gap-2">
               <button onClick={() => openDrill(currentId)} className="text-sm px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-400/30 transition">🎯 Quiz this position</button>
               <button onClick={() => openStudy(pos.group)} className="text-sm px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-200 border border-indigo-400/30 transition">🎴 Study {pos.group}</button>
+              {COUNTERPART[currentId] && (
+                <button onClick={() => goTo(COUNTERPART[currentId], { viaArchive: true })} className="text-sm px-3 py-1.5 rounded-lg bg-ink-700 hover:bg-ink-600 text-slate-200 border border-white/5 transition">⇄ See it from the other side</button>
+              )}
             </div>
             {/* Transitions */}
             <div className="mb-2 flex items-center gap-3 flex-wrap">
@@ -5096,6 +5110,7 @@ function App() {
           { icon: "📄", label: "Export / Print program", run: () => exportProgram() },
           { icon: "⚙️", label: "Settings", run: () => setSettingsOpen(true) },
           { icon: "❓", label: "Guide / intro", run: () => setWelcomeOpen(true) },
+          { icon: "🎲", label: "Surprise me — random position", run: () => surprise() },
           { icon: "▶️", label: "Follow my game plan", run: () => followPlan() },
           { icon: "↩️", label: "Back", run: () => back() },
           { icon: "♻️", label: "Reset to standing", run: () => reset() },
